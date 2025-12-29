@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "english-meeting-helper-cdk"
+version = "0.1.0"
+description = "English Meeting Helper CDK skeleton"
+authors = ["Product Team"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+aws-cdk-lib = "^2.140.0"
+constructs = "^10.3.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,15 @@
+{
+  "name": "@english-meeting-helper/contracts",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "generate": "node scripts/generate-ts.js && node scripts/generate-py.js",
+    "validate": "node scripts/validate-generated.js"
+  },
+  "dependencies": {
+    "json-schema-to-typescript": "^13.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

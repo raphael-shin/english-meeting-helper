@@ -1,0 +1,48 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.mic-meter {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 14px;
+}
+
+.mic-bar {
+  width: 3px;
+  height: 10px;
+  border-radius: 9999px;
+  background: #94a3b8;
+  transform-origin: center bottom;
+  animation: micWave 1.1s ease-in-out infinite;
+  will-change: transform;
+}
+
+.mic-meter--idle .mic-bar {
+  animation-duration: 1.6s;
+  opacity: 0.6;
+}
+
+@keyframes micWave {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 0.95;
+  }
+}

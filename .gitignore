@@ -1,0 +1,30 @@
+# Node
+node_modules/
+dist/
+.vite/
+coverage/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+*.tsbuildinfo
+cdk.out/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
