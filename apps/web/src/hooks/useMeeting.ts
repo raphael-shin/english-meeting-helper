@@ -41,8 +41,9 @@ export interface MeetingState {
   error: ErrorEvent | null;
 }
 
-const LIVE_TRANSCRIPT_TTL_MS = 10_000;
+const LIVE_TRANSCRIPT_PARTIAL_TTL_MS = 25_000;
 const LIVE_TRANSCRIPT_PRUNE_INTERVAL_MS = 2_000;
+const LIVE_TRANSCRIPT_HISTORY_LIMIT = 6;
 
 export function useMeeting(wsBaseUrl: string) {
   const [state, setState] = useState<MeetingState>({
@@ -64,7 +65,7 @@ export function useMeeting(wsBaseUrl: string) {
   const handlePartialTranscript = (event: TranscriptPartialEvent) => {
     setState((current) => {
       const existing = current.liveTranscripts.find(
-        (entry) => entry.speaker === event.speaker
+        (entry) => entry.speaker === event.speaker && !entry.isFinal
       );
       const updated: TranscriptEntry = existing
         ? { ...existing, text: event.text, ts: event.ts }
@@ -81,7 +82,7 @@ export function useMeeting(wsBaseUrl: string) {
         ...current,
         liveTranscripts: [
           ...current.liveTranscripts.filter(
-            (entry) => entry.speaker !== event.speaker
+            (entry) => entry.isFinal || entry.speaker !== event.speaker
           ),
           updated,
         ],
@@ -91,22 +92,30 @@ export function useMeeting(wsBaseUrl: string) {
 
   const handleFinalTranscript = (event: TranscriptFinalEvent) => {
     setState((current) => {
+      const finalEntry: TranscriptEntry = {
+        id: `final-${event.ts}`,
+        kind: "transcript",
+        speaker: event.speaker,
+        text: event.text,
+        isFinal: true,
+        ts: event.ts,
+        translations: [],
+      };
+      const liveFinals = current.liveTranscripts.filter(
+        (entry) => entry.isFinal && entry.ts !== event.ts
+      );
+      const livePartials = current.liveTranscripts.filter(
+        (entry) => !entry.isFinal && entry.speaker !== event.speaker
+      );
+      const trimmedFinals = [finalEntry, ...liveFinals]
+        .sort((left, right) => right.ts - left.ts)
+        .slice(0, LIVE_TRANSCRIPT_HISTORY_LIMIT);
       return {
         ...current,
-        liveTranscripts: current.liveTranscripts.filter(
-          (entry) => entry.speaker !== event.speaker
-        ),
+        liveTranscripts: [...livePartials, ...trimmedFinals],
         transcripts: [
           ...current.transcripts.filter((entry) => entry.isFinal),
-          {
-            id: `final-${event.ts}`,
-            kind: "transcript",
-            speaker: event.speaker,
-            text: event.text,
-            isFinal: true,
-            ts: event.ts,
-            translations: [],
-          },
+          finalEntry,
         ],
       };
     });
@@ -127,12 +136,15 @@ export function useMeeting(wsBaseUrl: string) {
           ...target,
           translations,
         };
-        return { ...current, transcripts };
+        const liveTranscripts = current.liveTranscripts.map((entry) =>
+          entry.ts === event.sourceTs ? { ...entry, translations } : entry
+        );
+        return { ...current, transcripts, liveTranscripts };
       }
 
       const liveTranscripts = [...current.liveTranscripts];
       const liveIndex = liveTranscripts.findIndex(
-        (entry) => entry.speaker === event.speaker
+        (entry) => entry.ts === event.sourceTs
       );
       if (liveIndex >= 0) {
         const target = liveTranscripts[liveIndex];
@@ -324,7 +336,8 @@ export function useMeeting(wsBaseUrl: string) {
         }
         const now = Date.now();
         const liveTranscripts = current.liveTranscripts.filter(
-          (entry) => now - entry.ts < LIVE_TRANSCRIPT_TTL_MS
+          (entry) =>
+            entry.isFinal || now - entry.ts < LIVE_TRANSCRIPT_PARTIAL_TTL_MS
         );
         if (liveTranscripts.length === current.liveTranscripts.length) {
           return current;

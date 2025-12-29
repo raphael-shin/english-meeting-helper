@@ -32,9 +32,17 @@ class TranslationEntry:
 @dataclass(slots=True)
 class PartialTranslationState:
     last_complete_sentence: str = ""
-    last_partial_source: str = ""
+    last_caption_text: str = ""
     last_emit_ts: int = 0
     last_emit_length: int = 0
+    last_translation_text: str = ""
+    last_translation_ts: int = 0
+
+
+@dataclass(slots=True)
+class PartialEmit:
+    caption_text: str
+    translation_text: str | None
 
 
 class MeetingSession:
@@ -67,31 +75,40 @@ class MeetingSession:
         self.transcripts.append(TranscriptEntry(speaker=speaker, ts=ts, text=text))
         return speaker_changed
 
-    def extract_partial_translation(self, speaker: str, ts: int, text: str) -> str | None:
+    def extract_partial_emit(self, speaker: str, ts: int, text: str) -> PartialEmit | None:
         trimmed = text.strip()
         if not trimmed:
             return None
 
-        state = self._partial_state.get(speaker)
-        if state is None:
-            state = PartialTranslationState()
+        state = self._partial_state.get(speaker) or PartialTranslationState()
 
         boundary_changed = False
-        sentences, _ = self._split_sentences(trimmed)
+        sentences, remainder = self._split_sentences(trimmed)
         if sentences:
             candidate = sentences[-1]
             if candidate != state.last_complete_sentence:
                 boundary_changed = True
                 state.last_complete_sentence = candidate
-                state.last_partial_source = ""
                 state.last_emit_ts = 0
                 state.last_emit_length = 0
-        if len(trimmed) < _PARTIAL_UPDATE_MIN_LENGTH and not boundary_changed:
+                state.last_caption_text = ""
+                state.last_translation_text = ""
+                state.last_translation_ts = 0
+
+        caption_text = self._build_partial_caption(sentences, remainder)
+        if not caption_text:
+            self._partial_state[speaker] = state
+            return None
+        if len(caption_text) < _PARTIAL_UPDATE_MIN_LENGTH and not boundary_changed:
             self._partial_state[speaker] = state
             return None
 
         soft_boundary = bool(_SOFT_BOUNDARY_RE.search(trimmed))
-        growth = len(trimmed) - state.last_emit_length if state.last_emit_length else len(trimmed)
+        growth = (
+            len(caption_text) - state.last_emit_length
+            if state.last_emit_length
+            else len(caption_text)
+        )
         time_since = ts - state.last_emit_ts if state.last_emit_ts else None
         time_triggered = (
             state.last_emit_ts > 0
@@ -105,15 +122,27 @@ class MeetingSession:
             self._partial_state[speaker] = state
             return None
 
-        if trimmed == state.last_partial_source:
+        if caption_text == state.last_caption_text:
             self._partial_state[speaker] = state
             return None
 
-        state.last_partial_source = trimmed
+        state.last_caption_text = caption_text
         state.last_emit_ts = ts
-        state.last_emit_length = len(trimmed)
+        state.last_emit_length = len(caption_text)
+        translation_text = self._build_translation_chunk(sentences)
+        if translation_text and translation_text != state.last_translation_text:
+            state.last_translation_text = translation_text
+            state.last_translation_ts = ts
+        else:
+            translation_text = None
         self._partial_state[speaker] = state
-        return trimmed
+        return PartialEmit(caption_text=caption_text, translation_text=translation_text)
+
+    def is_partial_translation_current(self, speaker: str, ts: int, text: str) -> bool:
+        state = self._partial_state.get(speaker)
+        if state is None:
+            return False
+        return state.last_translation_ts == ts and state.last_translation_text == text
 
     def add_translation(self, speaker: str, source_ts: int, source_text: str, translated_text: str) -> None:
         self.translations.append(
@@ -151,7 +180,7 @@ class MeetingSession:
             self._sentence_buffers[speaker] = remainder
         else:
             self._sentence_buffers.pop(speaker, None)
-        return self._chunk_sentences(sentences, max_sentences=2), remainder
+        return self._chunk_sentences(sentences, max_sentences=1), remainder
 
     @staticmethod
     def _split_sentences(text: str) -> tuple[list[str], str]:
@@ -174,3 +203,15 @@ class MeetingSession:
             if chunk:
                 chunks.append(chunk)
         return chunks
+
+    @staticmethod
+    def _build_partial_caption(sentences: list[str], remainder: str) -> str:
+        if sentences:
+            return sentences[-1].strip()
+        return remainder.strip()
+
+    @staticmethod
+    def _build_translation_chunk(sentences: list[str]) -> str | None:
+        if not sentences:
+            return None
+        return sentences[-1].strip()

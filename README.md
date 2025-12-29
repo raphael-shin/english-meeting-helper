@@ -1,13 +1,13 @@
 # English Meeting Helper
 
 ## Overview
-English Meeting Helper는 실시간 영어 회의를 지원하는 웹 애플리케이션입니다. 실시간 전사/번역, 빠른 한→영 번역, AI 질문 제안을 제공합니다.
+English Meeting Helper는 실시간 영어 회의를 지원하는 웹 애플리케이션입니다. Live/History 탭 전사 UI, 2문장 단위 캡션/번역, 빠른 한→영 번역, AI 질문 제안을 제공합니다.
 
 ## Key Features
-- Live/History 분리된 전사 UI (partial/final 표시)
-- 영어 → 한국어 실시간 번역 (partial 업데이트 포함)
+- Live/History 탭 기반 전사 UI (partial/final 표시, Live는 최근 확정 자막 일부 유지)
+- 영어 → 한국어 실시간 번역 (partial은 2문장 단위 캡션 기준)
 - Quick Translate (한국어 → 영어)
-- AI Suggestions (회의 맥락 + 사용자 프롬프트 기반)
+- AI Suggestions (회의 맥락 + 사용자 프롬프트 기반, 카드 내 Settings에서 프롬프트 조정)
 - 마이크 설정 및 전사 시작/중단 컨트롤
 
 ## Directory Map
@@ -97,6 +97,8 @@ npm run test:web
 ### Notes
 - 실시간 전사/번역은 AWS 자격증명이 필요합니다. 로컬에서 실제 기능을 확인하려면 `AWS_REGION`과 `AWS_PROFILE`(또는 환경 변수 기반 자격증명)을 설정하세요.
 - Bedrock 모델 ID는 리전에 따라 유효해야 합니다.
+- Live 자막은 partial TTL(기본 25초) 이후 제거되며, 확정 자막은 최신 일부만 Live에 유지됩니다.
+- Transcribe diarization은 비활성화되어 화자 라벨이 표시되지 않습니다.
 
 ### Environment Variables
 #### Backend (`apps/api/.env`)

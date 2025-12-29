@@ -3,7 +3,6 @@ import { useState } from "react";
 import { MeetingPanel } from "./components/MeetingPanel";
 import { QuickTranslate } from "./components/QuickTranslate";
 import { SuggestionsPanel } from "./components/SuggestionsPanel";
-import { SuggestionsPromptPanel } from "./components/SuggestionsPromptPanel";
 import { TopBar } from "./components/TopBar";
 import { useMeeting } from "./hooks/useMeeting";
 
@@ -23,32 +22,28 @@ export default function App() {
           onStop={meeting.stopMeeting}
         />
 
-        <section className="grid flex-1 min-h-0 items-stretch gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] md:gap-6">
-          <div className="flex h-full min-h-0 flex-col">
-            <MeetingPanel
-              isRecording={meeting.isRecording}
-              liveTranscripts={meeting.liveTranscripts}
-              transcripts={meeting.transcripts}
-              orphanTranslations={meeting.orphanTranslations}
-              error={meeting.error}
-              onReconnect={meeting.reconnect}
-              onDismissError={meeting.dismissError}
-            />
-          </div>
-          <div className="flex h-full min-h-0 flex-col gap-4">
-            <SuggestionsPromptPanel
-              value={suggestionsPrompt}
-              onChange={setSuggestionsPrompt}
-              onApply={() => meeting.sendSuggestionsPrompt(suggestionsPrompt)}
-              isConnected={meeting.isConnected}
-            />
-            <div className="flex min-h-0 flex-1">
-              <SuggestionsPanel suggestions={meeting.suggestions} />
-            </div>
-          </div>
+        <section className="flex-[3] min-h-0">
+          <MeetingPanel
+            isRecording={meeting.isRecording}
+            liveTranscripts={meeting.liveTranscripts}
+            transcripts={meeting.transcripts}
+            orphanTranslations={meeting.orphanTranslations}
+            error={meeting.error}
+            onReconnect={meeting.reconnect}
+            onDismissError={meeting.dismissError}
+          />
         </section>
 
-        <QuickTranslate />
+        <section className="grid flex-[1] min-h-0 gap-4 md:grid-cols-2 md:items-stretch">
+          <QuickTranslate />
+          <SuggestionsPanel
+            suggestions={meeting.suggestions}
+            promptValue={suggestionsPrompt}
+            onPromptChange={setSuggestionsPrompt}
+            onPromptApply={() => meeting.sendSuggestionsPrompt(suggestionsPrompt)}
+            isConnected={meeting.isConnected}
+          />
+        </section>
       </main>
     </div>
   );

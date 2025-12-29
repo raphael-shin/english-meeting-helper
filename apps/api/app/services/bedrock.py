@@ -12,6 +12,8 @@ from app.core.config import Settings
 class BedrockServiceProtocol(Protocol):
     async def translate_en_to_ko(self, text: str) -> str: ...
 
+    async def translate_en_to_ko_history(self, text: str) -> str: ...
+
     async def translate_ko_to_en(self, text: str) -> str: ...
 
 
@@ -27,6 +29,17 @@ class BedrockService:
             "Return only the translation, no explanation."
         )
         response = await self._invoke_model(self.settings.bedrock_translation_model_id, prompt)
+        return response.strip()
+
+    async def translate_en_to_ko_history(self, text: str) -> str:
+        """Translate English to Korean using the history model (falls back to translation model if not set)."""
+        model_id = self.settings.bedrock_translation_history_model_id or self.settings.bedrock_translation_model_id
+        prompt = (
+            "Translate the following English text to natural Korean:\n"
+            f"\"{text}\"\n"
+            "Return only the translation, no explanation."
+        )
+        response = await self._invoke_model(model_id, prompt)
         return response.strip()
 
     async def translate_ko_to_en(self, text: str) -> str:

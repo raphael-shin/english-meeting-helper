@@ -20,6 +20,9 @@ class FakeBedrockService:
     async def translate_en_to_ko(self, text: str) -> str:
         return "translated"
 
+    async def translate_en_to_ko_history(self, text: str) -> str:
+        return "translated_history"
+
 
 class FakeSuggestionService:
     async def generate_suggestions(  # type: ignore[no-untyped-def]

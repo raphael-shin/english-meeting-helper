@@ -37,7 +37,6 @@ class TranscribeService:
             language_code=self.settings.transcribe_language_code,
             media_sample_rate_hz=self.settings.transcribe_sample_rate,
             media_encoding=self.settings.transcribe_media_encoding,
-            show_speaker_label=True,
         )
 
     async def send_audio(self, audio_chunk: bytes) -> None:

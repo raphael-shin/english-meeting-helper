@@ -12,11 +12,15 @@ class Settings(BaseSettings):
     transcribe_sample_rate: int = 16000
     transcribe_media_encoding: str = "pcm"
     bedrock_translation_model_id: str = Field(
-        "apac.amazon.nova-2-lite-v1:0", validation_alias="BEDROCK_TRANSLATION_MODEL_ID"
+        "apac.anthropic.claude-haiku-4-5-20251001-v1:0", validation_alias="BEDROCK_TRANSLATION_MODEL_ID"
     )
     bedrock_quick_translate_model_id: str = Field(
         "apac.anthropic.claude-haiku-4-5-20251001-v1:0",
         validation_alias="BEDROCK_QUICK_TRANSLATE_MODEL_ID",
+    )
+    bedrock_translation_history_model_id: str = Field(
+        "",
+        validation_alias="BEDROCK_TRANSLATION_HISTORY_MODEL_ID",
     )
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"], validation_alias="CORS_ORIGINS")
 
