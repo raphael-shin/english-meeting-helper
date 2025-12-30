@@ -75,7 +75,7 @@ class SuggestionService:
                 ko = str(item.get("ko", "")).strip()
                 if en and ko:
                     items.append({"en": en, "ko": ko})
-            return items[:5]
+            return items[:10]
 
         suggestions: list[dict[str, str]] = []
         for line in response.splitlines():
