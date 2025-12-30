@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 
-import { ErrorEvent } from "../types/events";
+import { ErrorEvent, SubtitleSegment } from "../types/events";
 import {
   OrphanTranslationEntry,
   TranscriptEntry,
 } from "../hooks/useMeeting";
 import { ErrorBanner } from "./ErrorBanner";
+import { SubtitleItem } from "./SubtitleItem";
 import { TranscriptItem } from "./TranscriptItem";
 import { TranslationItem } from "./TranslationItem";
 
 interface MeetingPanelProps {
   isRecording: boolean;
-  liveTranscripts: TranscriptEntry[];
+  displayBuffer: {
+    confirmed: SubtitleSegment[];
+    current: SubtitleSegment | null;
+  };
   transcripts: TranscriptEntry[];
   orphanTranslations: OrphanTranslationEntry[];
   error: ErrorEvent | null;
@@ -21,7 +25,7 @@ interface MeetingPanelProps {
 
 export function MeetingPanel({
   isRecording,
-  liveTranscripts,
+  displayBuffer,
   transcripts,
   orphanTranslations,
   error,
@@ -31,7 +35,6 @@ export function MeetingPanel({
   const [activeTab, setActiveTab] = useState<"live" | "history">("live");
   const liveScrollRef = useRef<HTMLDivElement>(null);
   const historyScrollRef = useRef<HTMLDivElement>(null);
-  const liveTimeline = [...liveTranscripts].sort((left, right) => right.ts - left.ts);
   const historyTimeline = [...transcripts, ...orphanTranslations].sort((left, right) => {
     if (left.ts !== right.ts) {
       return right.ts - left.ts;
@@ -47,7 +50,7 @@ export function MeetingPanel({
       return;
     }
     liveScrollRef.current.scrollTo({ top: 0 });
-  }, [liveTimeline.length]);
+  }, [displayBuffer.confirmed.length, displayBuffer.current?.id]);
 
   useEffect(() => {
     if (typeof historyScrollRef.current?.scrollTo !== "function") {
@@ -142,16 +145,40 @@ export function MeetingPanel({
             aria-live="polite"
             aria-label="Live transcripts"
           >
-            {liveTimeline.length === 0 ? (
+            {displayBuffer.confirmed.length === 0 && !displayBuffer.current ? (
               <p className="text-base text-emerald-100/70">
                 {isRecording
                   ? "Listening for speech..."
                   : "Click Start to begin recording"}
               </p>
             ) : (
-              liveTimeline.map((entry) => (
-                <TranscriptItem key={entry.id} transcript={entry} tone="live" />
-              ))
+              <>
+                {displayBuffer.current && (
+                  <>
+                    <div className="relative mb-4">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-emerald-400/30"></div>
+                      </div>
+                      <div className="relative flex justify-center">
+                        <span className="bg-slate-900 px-3 text-xs text-emerald-200/60 uppercase tracking-wider">
+                          Composing
+                        </span>
+                      </div>
+                    </div>
+                    <SubtitleItem
+                      segment={displayBuffer.current}
+                      variant="current"
+                    />
+                  </>
+                )}
+                {[...displayBuffer.confirmed].reverse().map((segment) => (
+                  <SubtitleItem
+                    key={segment.id}
+                    segment={segment}
+                    variant="confirmed"
+                  />
+                ))}
+              </>
             )}
           </div>
         </div>

@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AudioCapture } from "../lib/audio";
+import { logDebug } from "../lib/debug";
 import { MeetingWsClient } from "../lib/ws";
 import {
+  DisplayUpdateEvent,
   ErrorEvent,
   SuggestionItem,
+  SubtitleSegment,
+  TranscriptCorrectedEvent,
   TranscriptFinalEvent,
   TranscriptPartialEvent,
   TranslationFinalEvent,
+  TranslationCorrectedEvent,
   WebSocketEvent,
 } from "../types/events";
+import { ProviderMode } from "../types/provider";
 
 export interface TranscriptEntry {
   id: string;
@@ -18,16 +24,22 @@ export interface TranscriptEntry {
   text: string;
   isFinal: boolean;
   ts: number;
-  translations: string[];
+  segmentId: number;
+  translations: TranslationEntry[];
 }
 
-export interface OrphanTranslationEntry {
+export interface TranslationEntry {
+  speaker: string;
+  sourceTs: number;
+  sourceText: string;
+  translatedText: string;
+  segmentId: number;
+}
+
+export interface OrphanTranslationEntry extends TranslationEntry {
   id: string;
   kind: "translation";
   ts: number;
-  speaker: string;
-  sourceTs: number;
-  translatedText: string;
 }
 
 export interface MeetingState {
@@ -39,13 +51,25 @@ export interface MeetingState {
   orphanTranslations: OrphanTranslationEntry[];
   suggestions: SuggestionItem[];
   error: ErrorEvent | null;
+  displayBuffer: {
+    confirmed: SubtitleSegment[];
+    current: SubtitleSegment | null;
+  };
 }
 
 const LIVE_TRANSCRIPT_PARTIAL_TTL_MS = 25_000;
 const LIVE_TRANSCRIPT_PRUNE_INTERVAL_MS = 2_000;
-const LIVE_TRANSCRIPT_HISTORY_LIMIT = 6;
+const LIVE_TRANSCRIPT_HISTORY_LIMIT = 10;
 
-export function useMeeting(wsBaseUrl: string) {
+const PROVIDER_SAMPLE_RATES: Record<ProviderMode, number> = {
+  AWS: 16000,
+  OPENAI: 24000,
+};
+
+export function useMeeting(
+  wsBaseUrl: string,
+  providerMode: ProviderMode = "AWS"
+) {
   const [state, setState] = useState<MeetingState>({
     isConnected: false,
     isRecording: false,
@@ -55,34 +79,45 @@ export function useMeeting(wsBaseUrl: string) {
     orphanTranslations: [],
     suggestions: [],
     error: null,
+    displayBuffer: { confirmed: [], current: null },
   });
 
   const wsClientRef = useRef<MeetingWsClient | null>(null);
   const audioCaptureRef = useRef<AudioCapture | null>(null);
   const pendingPromptRef = useRef<string | null>(null);
   const lastPromptRef = useRef<string | null>(null);
+  const lastLiveCountRef = useRef<number>(0);
+  const lastHistoryCountRef = useRef<number>(0);
+  const lastConfirmedCountRef = useRef<number>(0);
+  const lastCurrentIdRef = useRef<number | null>(null);
 
   const handlePartialTranscript = (event: TranscriptPartialEvent) => {
     setState((current) => {
       const existing = current.liveTranscripts.find(
-        (entry) => entry.speaker === event.speaker && !entry.isFinal
+        (entry) => !entry.isFinal && entry.segmentId === event.segmentId
       );
       const updated: TranscriptEntry = existing
-        ? { ...existing, text: event.text, ts: event.ts }
+        ? {
+            ...existing,
+            text: event.text,
+            ts: event.ts,
+            segmentId: event.segmentId,
+          }
         : {
-            id: `partial-${event.speaker}-${event.ts}`,
+            id: `partial-${event.segmentId}`,
             kind: "transcript",
             speaker: event.speaker,
             text: event.text,
             isFinal: false,
             ts: event.ts,
+            segmentId: event.segmentId,
             translations: [],
           };
       return {
         ...current,
         liveTranscripts: [
           ...current.liveTranscripts.filter(
-            (entry) => entry.isFinal || entry.speaker !== event.speaker
+            (entry) => entry.isFinal || entry.segmentId !== event.segmentId
           ),
           updated,
         ],
@@ -92,65 +127,101 @@ export function useMeeting(wsBaseUrl: string) {
 
   const handleFinalTranscript = (event: TranscriptFinalEvent) => {
     setState((current) => {
+      const liveTranscripts = [...current.liveTranscripts];
+      const existingIndex = liveTranscripts.findIndex(
+        (entry) => entry.segmentId === event.segmentId
+      );
+      const existing =
+        existingIndex >= 0 ? liveTranscripts[existingIndex] : null;
       const finalEntry: TranscriptEntry = {
-        id: `final-${event.ts}`,
+        id: `final-${event.segmentId}`,
         kind: "transcript",
         speaker: event.speaker,
         text: event.text,
         isFinal: true,
         ts: event.ts,
-        translations: [],
+        segmentId: event.segmentId,
+        translations: existing?.translations ?? [],
       };
-      const liveFinals = current.liveTranscripts.filter(
-        (entry) => entry.isFinal && entry.ts !== event.ts
-      );
-      const livePartials = current.liveTranscripts.filter(
-        (entry) => !entry.isFinal && entry.speaker !== event.speaker
-      );
-      const trimmedFinals = [finalEntry, ...liveFinals]
-        .sort((left, right) => right.ts - left.ts)
+      if (existingIndex >= 0) {
+        liveTranscripts[existingIndex] = finalEntry;
+      } else {
+        liveTranscripts.push(finalEntry);
+      }
+      const trimmedFinals = liveTranscripts
+        .filter(
+          (entry) =>
+            entry.isFinal ||
+            entry.segmentId === event.segmentId
+        )
+        .sort(
+          (left, right) =>
+            right.segmentId - left.segmentId
+        )
         .slice(0, LIVE_TRANSCRIPT_HISTORY_LIMIT);
+      const historyFinals = current.transcripts.filter(
+        (entry) =>
+          entry.isFinal &&
+          entry.segmentId !== event.segmentId
+      );
       return {
         ...current,
-        liveTranscripts: [...livePartials, ...trimmedFinals],
-        transcripts: [
-          ...current.transcripts.filter((entry) => entry.isFinal),
-          finalEntry,
-        ],
+        liveTranscripts: trimmedFinals,
+        transcripts: [...historyFinals, finalEntry],
       };
     });
   };
 
   const handleTranslation = (event: TranslationFinalEvent) => {
+    const translationEntry: TranslationEntry = {
+      speaker: event.speaker,
+      sourceTs: event.sourceTs,
+      sourceText: event.sourceText,
+      translatedText: event.translatedText,
+      segmentId: event.segmentId,
+    };
     setState((current) => {
       const transcripts = [...current.transcripts];
       const targetIndex = transcripts.findIndex(
-        (entry) => entry.ts === event.sourceTs
+        (entry) => entry.segmentId === event.segmentId
       );
       if (targetIndex >= 0) {
         const target = transcripts[targetIndex];
-        const translations = target.translations.includes(event.translatedText)
+        const translations = target.translations.some(
+          (entry) =>
+            entry.translatedText === translationEntry.translatedText &&
+            entry.sourceText === translationEntry.sourceText
+        )
           ? target.translations
-          : [...target.translations, event.translatedText];
+          : [...target.translations, translationEntry];
         transcripts[targetIndex] = {
           ...target,
           translations,
         };
         const liveTranscripts = current.liveTranscripts.map((entry) =>
-          entry.ts === event.sourceTs ? { ...entry, translations } : entry
+          entry.segmentId === event.segmentId
+            ? { ...entry, translations }
+            : entry
         );
         return { ...current, transcripts, liveTranscripts };
       }
 
       const liveTranscripts = [...current.liveTranscripts];
       const liveIndex = liveTranscripts.findIndex(
-        (entry) => entry.ts === event.sourceTs
+        (entry) => entry.segmentId === event.segmentId
       );
       if (liveIndex >= 0) {
         const target = liveTranscripts[liveIndex];
+        const translations = target.translations.some(
+          (entry) =>
+            entry.translatedText === translationEntry.translatedText &&
+            entry.sourceText === translationEntry.sourceText
+        )
+          ? target.translations
+          : [...target.translations, translationEntry];
         liveTranscripts[liveIndex] = {
           ...target,
-          translations: [event.translatedText],
+          translations,
         };
         return { ...current, liveTranscripts };
       }
@@ -167,9 +238,7 @@ export function useMeeting(wsBaseUrl: string) {
               id: `orphan-${event.ts}`,
               kind: "translation",
               ts: event.ts,
-              speaker: event.speaker,
-              sourceTs: event.sourceTs,
-              translatedText: event.translatedText,
+              ...translationEntry,
             },
           ],
         };
@@ -178,7 +247,82 @@ export function useMeeting(wsBaseUrl: string) {
     });
   };
 
+  const handleTranslationCorrected = (event: TranslationCorrectedEvent) => {
+    const translationEntry: TranslationEntry = {
+      speaker: event.speaker,
+      sourceTs: event.ts,
+      sourceText: event.sourceText,
+      translatedText: event.translatedText,
+      segmentId: event.segmentId,
+    };
+    setState((current) => ({
+      ...current,
+      transcripts: current.transcripts.map((entry) =>
+        entry.segmentId === event.segmentId
+          ? { ...entry, translations: [translationEntry] }
+          : entry
+      ),
+    }));
+  };
+
+  const handleTranscriptCorrected = (event: TranscriptCorrectedEvent) => {
+    setState((current) => ({
+      ...current,
+      transcripts: current.transcripts.map((entry) =>
+        entry.segmentId === event.segmentId
+          ? { ...entry, text: event.correctedText }
+          : entry
+      ),
+    }));
+  };
+
+  const handleDisplayUpdate = (event: DisplayUpdateEvent) => {
+    logDebug(
+      "display.update",
+      {
+        confirmedCount: event.confirmed.length,
+        currentSegmentId: event.current?.segmentId ?? null,
+        currentTextLen: event.current?.text.length ?? 0,
+      },
+      { sampleRate: 1, level: "info" }
+    );
+    
+    // Log current (Composing) text for debugging disappearing text
+    if (event.current) {
+      console.log(`[COMPOSING] segmentId=${event.current.segmentId} text="${event.current.text}"`);
+    } else {
+      console.log(`[COMPOSING] current=null (cleared)`);
+    }
+    
+    setState((current) => ({
+      ...current,
+      displayBuffer: {
+        confirmed: event.confirmed,
+        current: event.current,
+      },
+    }));
+  };
+
   const handleEvent = useCallback((event: WebSocketEvent) => {
+    logDebug(
+      "meeting.event",
+      {
+        type: event.type,
+        segmentId: "segmentId" in event ? event.segmentId : undefined,
+        ts: event.ts,
+      },
+      { sampleRate: 0.2 }
+    );
+    if (event.type === "display.update") {
+      logDebug(
+        "meeting.display_event",
+        {
+          confirmedCount: event.confirmed.length,
+          currentSegmentId: event.current?.segmentId ?? null,
+        },
+        { sampleRate: 1, level: "info" }
+      );
+    }
     switch (event.type) {
       case "transcript.partial":
         handlePartialTranscript(event);
@@ -188,6 +332,15 @@ export function useMeeting(wsBaseUrl: string) {
         break;
       case "translation.final":
         handleTranslation(event);
+        break;
+      case "translation.corrected":
+        handleTranslationCorrected(event);
+        break;
+      case "transcript.corrected":
+        handleTranscriptCorrected(event);
+        break;
+      case "display.update":
+        handleDisplayUpdate(event);
         break;
       case "suggestions.update":
         setState((current) => ({ ...current, suggestions: event.items }));
@@ -202,6 +355,7 @@ export function useMeeting(wsBaseUrl: string) {
 
   const startMeeting = useCallback(async () => {
     const sessionId = crypto.randomUUID().toLowerCase();
+    const sampleRate = PROVIDER_SAMPLE_RATES[providerMode];
 
     wsClientRef.current = new MeetingWsClient(
       wsBaseUrl,
@@ -226,7 +380,7 @@ export function useMeeting(wsBaseUrl: string) {
 
     wsClientRef.current.connect(sessionId, {
       type: "session.start",
-      sampleRate: 16000,
+      sampleRate,
       format: "pcm_s16le",
       lang: "en-US",
     });
@@ -236,7 +390,7 @@ export function useMeeting(wsBaseUrl: string) {
 
     audioCaptureRef.current = new AudioCapture();
     await audioCaptureRef.current.start(
-      { sampleRate: 16000, chunkIntervalMs: 100 },
+      { sampleRate, chunkIntervalMs: 100 },
       (chunk) => wsClientRef.current?.sendAudio(chunk)
     );
 
@@ -249,8 +403,9 @@ export function useMeeting(wsBaseUrl: string) {
       orphanTranslations: [],
       suggestions: [],
       error: null,
+      displayBuffer: { confirmed: [], current: null },
     }));
-  }, [handleEvent, wsBaseUrl]);
+  }, [handleEvent, providerMode, wsBaseUrl]);
 
   const stopMeeting = useCallback(() => {
     wsClientRef.current?.sendControl({ type: "session.stop" });
@@ -261,14 +416,16 @@ export function useMeeting(wsBaseUrl: string) {
       isRecording: false,
       sessionId: null,
       liveTranscripts: [],
+      displayBuffer: { confirmed: [], current: null },
     }));
   }, []);
 
   const reconnect = useCallback(async () => {
     const sessionId = crypto.randomUUID().toLowerCase();
+    const sampleRate = PROVIDER_SAMPLE_RATES[providerMode];
     wsClientRef.current?.reconnect(sessionId, {
       type: "session.start",
-      sampleRate: 16000,
+      sampleRate,
       format: "pcm_s16le",
       lang: "en-US",
     });
@@ -278,7 +435,7 @@ export function useMeeting(wsBaseUrl: string) {
     audioCaptureRef.current?.stop();
     audioCaptureRef.current = new AudioCapture();
     await audioCaptureRef.current.start(
-      { sampleRate: 16000, chunkIntervalMs: 100 },
+      { sampleRate, chunkIntervalMs: 100 },
       (chunk) => wsClientRef.current?.sendAudio(chunk)
     );
     setState((current) => ({
@@ -287,8 +444,9 @@ export function useMeeting(wsBaseUrl: string) {
       isRecording: true,
       liveTranscripts: [],
       error: null,
+      displayBuffer: { confirmed: [], current: null },
     }));
-  }, []);
+  }, [providerMode]);
 
   const dismissError = useCallback(() => {
     setState((current) => ({ ...current, error: null }));
@@ -347,6 +505,49 @@ export function useMeeting(wsBaseUrl: string) {
     }, LIVE_TRANSCRIPT_PRUNE_INTERVAL_MS);
     return () => window.clearInterval(interval);
   }, [state.isRecording]);
+
+  useEffect(() => {
+    if (state.liveTranscripts.length !== lastLiveCountRef.current) {
+      logDebug("state.live_transcripts", {
+        count: state.liveTranscripts.length,
+        delta: state.liveTranscripts.length - lastLiveCountRef.current,
+      });
+      lastLiveCountRef.current = state.liveTranscripts.length;
+    }
+    if (state.transcripts.length !== lastHistoryCountRef.current) {
+      logDebug("state.history_transcripts", {
+        count: state.transcripts.length,
+        delta: state.transcripts.length - lastHistoryCountRef.current,
+      });
+      lastHistoryCountRef.current = state.transcripts.length;
+    }
+    if (state.displayBuffer.confirmed.length !== lastConfirmedCountRef.current) {
+      logDebug(
+        "state.display_confirmed",
+        {
+          count: state.displayBuffer.confirmed.length,
+          delta:
+            state.displayBuffer.confirmed.length -
+            lastConfirmedCountRef.current,
+        },
+        { sampleRate: 1, level: "info" }
+      );
+      lastConfirmedCountRef.current = state.displayBuffer.confirmed.length;
+    }
+    const currentId = state.displayBuffer.current?.segmentId ?? null;
+    if (currentId !== lastCurrentIdRef.current) {
+      logDebug(
+        "state.display_current",
+        { segmentId: currentId },
+        { sampleRate: 1, level: "info" }
+      );
+      lastCurrentIdRef.current = currentId;
+    }
+  }, [
+    state.liveTranscripts.length,
+    state.transcripts.length,
+    state.displayBuffer,
+  ]);
 
   useEffect(() => {
     return () => {

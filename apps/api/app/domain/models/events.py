@@ -28,6 +28,7 @@ class TranscriptPartialEvent(BaseEvent):
     session_id: str
     speaker: str
     text: str
+    segment_id: int
 
 
 class TranscriptFinalEvent(BaseEvent):
@@ -35,15 +36,52 @@ class TranscriptFinalEvent(BaseEvent):
     session_id: str
     speaker: str
     text: str
+    segment_id: int
 
 
 class TranslationFinalEvent(BaseEvent):
     type: Literal["translation.final"] = "translation.final"
     session_id: str
     source_ts: int
+    segment_id: int | None = None
     speaker: str
     source_text: str
     translated_text: str
+
+
+class TranscriptCorrectedEvent(BaseEvent):
+    type: Literal["transcript.corrected"] = "transcript.corrected"
+    session_id: str
+    segment_id: int
+    original_text: str
+    corrected_text: str
+
+
+class TranslationCorrectedEvent(BaseEvent):
+    type: Literal["translation.corrected"] = "translation.corrected"
+    session_id: str
+    segment_id: int
+    speaker: str
+    source_text: str
+    translated_text: str
+
+
+class SubtitleSegmentEvent(CamelModel):
+    id: str
+    text: str
+    speaker: str
+    start_time: int
+    end_time: int | None
+    is_final: bool
+    llm_corrected: bool
+    segment_id: int
+
+
+class DisplayUpdateEvent(BaseEvent):
+    type: Literal["display.update"] = "display.update"
+    session_id: str
+    confirmed: list[SubtitleSegmentEvent]
+    current: SubtitleSegmentEvent | None
 
 
 class SuggestionItem(CamelModel):

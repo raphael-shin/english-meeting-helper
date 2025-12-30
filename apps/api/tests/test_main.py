@@ -5,6 +5,7 @@ from hypothesis import given, strategies as st
 
 from app.main import app
 from app.ws import meetings as meetings_module
+from app.domain.models.provider import TranscriptResult
 
 
 @pytest.mark.asyncio
@@ -16,12 +17,17 @@ async def test_health() -> None:
         assert response.json() == {"status": "ok"}
 
 
-class FakeBedrockService:
+class FakeTranslationService:
     async def translate_en_to_ko(self, text: str) -> str:
         return "translated"
 
-    async def translate_en_to_ko_history(self, text: str) -> str:
+    async def translate_en_to_ko_history(
+        self, text: str, recent_context: list[str] | None = None
+    ) -> str:
         return "translated_history"
+
+    async def translate_ko_to_en(self, text: str) -> str:
+        return "translated"
 
 
 class FakeSuggestionService:
@@ -34,12 +40,9 @@ class FakeSuggestionService:
 def test_ws_meetings_ping_pong(monkeypatch) -> None:
     async def empty_stream():
         if False:  # pragma: no cover
-            yield {}
+            yield TranscriptResult(is_partial=True, text="", speaker="spk_1")
 
-    class FakeTranscribeService:
-        def __init__(self, settings) -> None:
-            return None
-
+    class FakeSTTService:
         async def start_stream(self, session_id: str) -> None:
             return None
 
@@ -49,12 +52,16 @@ def test_ws_meetings_ping_pong(monkeypatch) -> None:
         async def stop_stream(self) -> None:
             return None
 
+        def set_input_sample_rate(self, sample_rate: int) -> None:
+            return None
+
         def get_results(self):
             return empty_stream()
 
-    app.state.bedrock_service = FakeBedrockService()
+    app.state.translation_service = FakeTranslationService()
+    app.state.bedrock_service = FakeTranslationService()
     app.state.suggestion_service = FakeSuggestionService()
-    monkeypatch.setattr(meetings_module, "TranscribeService", FakeTranscribeService)
+    monkeypatch.setattr(meetings_module, "create_stt_service", lambda settings: FakeSTTService())
     client = TestClient(app)
     with client.websocket_connect("/ws/v1/meetings/test-session") as websocket:
         websocket.send_text('{"type":"client.ping","ts":123}')

@@ -3,11 +3,30 @@ export interface BaseEvent {
   ts: number;
 }
 
+export interface SubtitleSegment {
+  id: string;
+  text: string;
+  speaker: string;
+  startTime: number;
+  endTime: number | null;
+  isFinal: boolean;
+  llmCorrected: boolean;
+  segmentId: number;
+}
+
+export interface DisplayUpdateEvent extends BaseEvent {
+  type: "display.update";
+  sessionId: string;
+  confirmed: SubtitleSegment[];
+  current: SubtitleSegment | null;
+}
+
 export interface TranscriptPartialEvent extends BaseEvent {
   type: "transcript.partial";
   sessionId: string;
   speaker: string;
   text: string;
+  segmentId: number;
 }
 
 export interface TranscriptFinalEvent extends BaseEvent {
@@ -15,15 +34,34 @@ export interface TranscriptFinalEvent extends BaseEvent {
   sessionId: string;
   speaker: string;
   text: string;
+  segmentId: number;
 }
 
 export interface TranslationFinalEvent extends BaseEvent {
   type: "translation.final";
   sessionId: string;
   sourceTs: number;
+  segmentId: number;
   speaker: string;
   sourceText: string;
   translatedText: string;
+}
+
+export interface TranslationCorrectedEvent extends BaseEvent {
+  type: "translation.corrected";
+  sessionId: string;
+  segmentId: number;
+  speaker: string;
+  sourceText: string;
+  translatedText: string;
+}
+
+export interface TranscriptCorrectedEvent extends BaseEvent {
+  type: "transcript.corrected";
+  sessionId: string;
+  segmentId: number;
+  originalText: string;
+  correctedText: string;
 }
 
 export interface SuggestionItem {
@@ -49,16 +87,19 @@ export interface ServerPongEvent extends BaseEvent {
 }
 
 export type WebSocketEvent =
+  | DisplayUpdateEvent
   | TranscriptPartialEvent
   | TranscriptFinalEvent
+  | TranscriptCorrectedEvent
   | TranslationFinalEvent
+  | TranslationCorrectedEvent
   | SuggestionsUpdateEvent
   | ErrorEvent
   | ServerPongEvent;
 
 export interface SessionStartMessage {
   type: "session.start";
-  sampleRate: 16000;
+  sampleRate: 16000 | 24000;
   format: "pcm_s16le";
   lang: "en-US";
 }

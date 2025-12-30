@@ -13,6 +13,7 @@ export function TranslationItem({ translation }: TranslationItemProps) {
       <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
         <span className="text-slate-400">{timestamp}</span>
       </div>
+      <p className="text-sm text-slate-500">{translation.sourceText}</p>
       <p className="text-sm text-blue-600">{translation.translatedText}</p>
     </div>
   );

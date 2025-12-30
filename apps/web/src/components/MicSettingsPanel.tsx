@@ -1,11 +1,21 @@
 import { useEffect, useState } from "react";
 
+import { ProviderMode } from "../types/provider";
+
 interface AudioDeviceOption {
   deviceId: string;
   label: string;
 }
 
-export function MicSettingsPanel() {
+interface MicSettingsPanelProps {
+  providerMode: ProviderMode;
+  onProviderModeChange: (mode: ProviderMode) => void;
+}
+
+export function MicSettingsPanel({
+  providerMode,
+  onProviderModeChange,
+}: MicSettingsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [devices, setDevices] = useState<AudioDeviceOption[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
@@ -67,6 +77,19 @@ export function MicSettingsPanel() {
       {isOpen && (
         <div className="absolute right-0 top-12 z-10 w-64 rounded-lg border bg-white p-3 shadow-lg">
           <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-600">
+              Provider
+            </label>
+            <select
+              value={providerMode}
+              onChange={(event) =>
+                onProviderModeChange(event.target.value as ProviderMode)
+              }
+              className="w-full rounded border px-2 py-1 text-sm"
+            >
+              <option value="AWS">AWS</option>
+              <option value="OPENAI">OpenAI</option>
+            </select>
             <label className="text-xs font-semibold text-slate-600">
               Microphone
             </label>

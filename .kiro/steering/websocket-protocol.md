@@ -11,9 +11,10 @@ inclusion: manual
 
 ## 프레임 규칙
 - Control/Event: JSON 텍스트 프레임
-- Audio: 바이너리 프레임 (16kHz mono PCM s16le)
+- Audio: 바이너리 프레임 (AWS: 16kHz mono PCM s16le, OpenAI: 24kHz mono PCM s16le)
 - `ts`는 epoch milliseconds 기준
 - `speaker`는 `"spk_1"` 형태의 문자열 식별자
+- 단일 화자 모드에서는 모든 이벤트의 `speaker`를 `"spk_1"`로 고정합니다.
 
 ## 클라이언트 → 서버 (Control)
 
@@ -26,6 +27,7 @@ inclusion: manual
   "lang": "en-US"
 }
 ```
+OpenAI 모드에서는 `sampleRate`를 `24000`으로 설정합니다.
 
 ### session.stop
 ```json
@@ -47,7 +49,8 @@ inclusion: manual
 
 ### Audio (바이너리)
 - 20~100ms 단위 청크
-- 16kHz mono PCM s16le
+- AWS: 16kHz mono PCM s16le
+- OpenAI: 24kHz mono PCM s16le
 
 ## 서버 → 클라이언트 (Event)
 
@@ -63,7 +66,8 @@ inclusion: manual
   "sessionId": "sess_123",
   "speaker": "spk_1",
   "ts": 1735350000123,
-  "text": "So the next step is"
+  "text": "So the next step is",
+  "segmentId": 41
 }
 ```
 
@@ -74,7 +78,8 @@ inclusion: manual
   "sessionId": "sess_123",
   "speaker": "spk_1",
   "ts": 1735350000456,
-  "text": "So the next step is to review the budget."
+  "text": "So the next step is to review the budget.",
+  "segmentId": 41
 }
 ```
 `transcript.final` 이벤트는 문장 경계(`.`, `!`, `?`) 기준으로 완성된 문장(또는 1~2문장 청크)만 전달합니다. AWS Transcribe의 final 결과가 들어와도 문장이 완료되지 않은 경우에는 `transcript.partial`만 갱신될 수 있습니다.
@@ -85,12 +90,26 @@ inclusion: manual
   "type": "translation.final",
   "sessionId": "sess_123",
   "sourceTs": 1735350000456,
+  "segmentId": 41,
   "speaker": "spk_1",
   "sourceText": "So the next step is to review the budget.",
   "translatedText": "다음 단계는 예산을 검토하는 것입니다."
 }
 ```
 > `translation.final` 이벤트는 partial 전사에 대한 임시 번역 업데이트로도 전송될 수 있습니다.
+
+### translation.corrected
+```json
+{
+  "type": "translation.corrected",
+  "sessionId": "sess_123",
+  "segmentId": 42,
+  "speaker": "spk_1",
+  "sourceText": "So the next step is to review the budget.",
+  "translatedText": "다음 단계는 예산을 검토하는 것입니다."
+}
+```
+> `translation.corrected`는 LLM 보정 이후의 텍스트를 다시 번역한 결과를 비동기 갱신하는 이벤트입니다.
 
 ### suggestions.update (P1)
 ```json

@@ -1,11 +1,14 @@
 import { MicSettingsPanel } from "./MicSettingsPanel";
 import { TranscribeControls } from "./TranscribeControls";
+import { ProviderMode } from "../types/provider";
 
 interface TopBarProps {
   isRecording: boolean;
   isConnected: boolean;
   onStart: () => void;
   onStop: () => void;
+  providerMode: ProviderMode;
+  onProviderModeChange: (mode: ProviderMode) => void;
 }
 
 export function TopBar({
@@ -13,6 +16,8 @@ export function TopBar({
   isConnected,
   onStart,
   onStop,
+  providerMode,
+  onProviderModeChange,
 }: TopBarProps) {
   const micBars = Array.from({ length: 14 }, (_, index) => (
     <span
@@ -56,7 +61,10 @@ export function TopBar({
             </div>
           </div>
         )}
-        <MicSettingsPanel />
+        <MicSettingsPanel
+          providerMode={providerMode}
+          onProviderModeChange={onProviderModeChange}
+        />
         <TranscribeControls
           isRecording={isRecording}
           onStart={onStart}

@@ -35,7 +35,7 @@ export function TranscriptItem({ transcript, tone = "history" }: TranscriptItemP
       <p className={textClass}>{transcript.text}</p>
       {transcript.translations.map((translation, index) => (
         <p key={`${transcript.id}-tr-${index}`} className={translationClass}>
-          {translation}
+          {translation.translatedText}
         </p>
       ))}
     </div>

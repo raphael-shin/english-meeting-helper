@@ -6,11 +6,11 @@ from typing import Any
 
 from app.core.config import Settings
 from app.domain.models.session import TranscriptEntry
-from app.services.bedrock import BedrockService
+from app.services.translation.aws import AWSTranslationService
 
 
 class SuggestionService:
-    def __init__(self, bedrock_service: BedrockService, settings: Settings) -> None:
+    def __init__(self, bedrock_service: AWSTranslationService, settings: Settings) -> None:
         self.bedrock = bedrock_service
         self.settings = settings
         self.min_transcripts_for_suggestion = 3

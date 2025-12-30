@@ -2,43 +2,34 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, Protocol
+from typing import Any
 
 import boto3
 
 from app.core.config import Settings
 
 
-class BedrockServiceProtocol(Protocol):
-    async def translate_en_to_ko(self, text: str) -> str: ...
-
-    async def translate_en_to_ko_history(self, text: str) -> str: ...
-
-    async def translate_ko_to_en(self, text: str) -> str: ...
-
-
-class BedrockService:
+class AWSTranslationService:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.client = boto3.client("bedrock-runtime", region_name=settings.aws_region)
 
     async def translate_en_to_ko(self, text: str) -> str:
         prompt = (
-            "Translate the following English text to natural Korean:\n"
+            "Translate the following English text to natural Korean.\n"
             f"\"{text}\"\n"
-            "Return only the translation, no explanation."
+            "Return only the Korean translation. Do not ask questions or add explanations."
         )
         response = await self._invoke_model(self.settings.bedrock_translation_model_id, prompt)
         return response.strip()
 
-    async def translate_en_to_ko_history(self, text: str) -> str:
-        """Translate English to Korean using the history model (falls back to translation model if not set)."""
+    async def translate_en_to_ko_history(
+        self,
+        text: str,
+        recent_context: list[str] | None = None,
+    ) -> str:
         model_id = self.settings.bedrock_translation_history_model_id or self.settings.bedrock_translation_model_id
-        prompt = (
-            "Translate the following English text to natural Korean:\n"
-            f"\"{text}\"\n"
-            "Return only the translation, no explanation."
-        )
+        prompt = self._build_history_prompt(text, recent_context)
         response = await self._invoke_model(model_id, prompt)
         return response.strip()
 
@@ -49,6 +40,10 @@ class BedrockService:
             "Return only the translation, no explanation."
         )
         response = await self._invoke_model(self.settings.bedrock_quick_translate_model_id, prompt)
+        return response.strip()
+
+    async def invoke_correction(self, prompt: str) -> str:
+        response = await self._invoke_model(self.settings.bedrock_correction_model_id, prompt)
         return response.strip()
 
     async def _invoke_model(self, model_id: str, prompt: str) -> str:
@@ -69,9 +64,25 @@ class BedrockService:
         return self._extract_text(response)
 
     @staticmethod
+    def _build_history_prompt(text: str, recent_context: list[str] | None) -> str:
+        lines = [
+            "You are a translator. Translate English to natural Korean.",
+            "Use context for coherence but translate only the current line.",
+            "If the line is unclear or incomplete, make the best possible inference.",
+            "Never ask questions, request more context, or mention language selection.",
+            "Respond in Korean only, without quotes or extra text.",
+        ]
+        if recent_context:
+            lines.append("Recent context:")
+            lines.extend(f"- {entry}" for entry in recent_context)
+        lines.append(f"Current line: \"{text}\"")
+        lines.append("Return only the translation.")
+        return "\n".join(lines)
+
+    @staticmethod
     def _extract_text(response: dict[str, Any]) -> str:
         if "output" in response:
-            return BedrockService._extract_converse_text(response)
+            return AWSTranslationService._extract_converse_text(response)
         body = response.get("body")
         if body is None:
             return ""

@@ -10,6 +10,7 @@ from .events import (
     TranscriptPartialEvent,
     TranslationFinalEvent,
 )
+from .provider import ProviderMode, TranscriptResult
 from .session import MeetingSession, TranscriptEntry, TranslationEntry
 from .translate import TranslateRequest, TranslateResponse
 
@@ -23,6 +24,8 @@ __all__ = [
     "SuggestionsUpdateEvent",
     "SuggestionItem",
     "ErrorEvent",
+    "ProviderMode",
+    "TranscriptResult",
     "TranslateRequest",
     "TranslateResponse",
     "MeetingSession",

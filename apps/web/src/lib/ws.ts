@@ -3,6 +3,7 @@ import {
   SessionStartMessage,
   WebSocketEvent,
 } from "../types/events";
+import { logDebug } from "./debug";
 
 export type EventHandler = (event: WebSocketEvent) => void;
 
@@ -51,6 +52,7 @@ export class MeetingWsClient {
 
     socket.onopen = () => {
       this.onConnectionChange?.(true);
+      logDebug("ws.open", { url });
       this.sendControl(startMessage);
       this.startKeepAlive();
     };
@@ -59,12 +61,24 @@ export class MeetingWsClient {
       try {
         const data = JSON.parse(event.data) as WebSocketEvent;
         if (data.type === "server.pong") {
+          logDebug("ws.pong", { ts: data.ts }, { sampleRate: 0.1 });
           this.handlePong();
           return;
         }
+        logDebug(
+          "ws.event",
+          {
+            type: data.type,
+            segmentId: "segmentId" in data ? data.segmentId : undefined,
+            ts: data.ts,
+            size: event.data?.length ?? 0,
+          },
+          { sampleRate: 0.2 }
+        );
         this.onEvent?.(data);
       } catch (error) {
         console.error("Failed to parse WebSocket message:", error);
+        logDebug("ws.parse_error", { message: String(error) }, { level: "warn" });
       }
     };
 
@@ -72,10 +86,12 @@ export class MeetingWsClient {
       this.stopKeepAlive();
       this.socket = null;
       this.onConnectionChange?.(false);
+      logDebug("ws.close");
     };
 
     socket.onerror = (error) => {
       console.error("WebSocket error:", error);
+      logDebug("ws.error", { message: String(error) }, { level: "warn" });
     };
   }
 
@@ -93,6 +109,7 @@ export class MeetingWsClient {
     }
     this.pongTimeoutId = window.setTimeout(() => {
       this.onConnectionIssue?.("PONG_TIMEOUT");
+      logDebug("ws.pong_timeout", undefined, { level: "warn" });
       this.disconnect();
     }, 30000);
   }
