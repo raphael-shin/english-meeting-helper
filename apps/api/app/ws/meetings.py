@@ -104,6 +104,7 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
             is_final=segment.is_final,
             llm_corrected=segment.llm_corrected,
             segment_id=segment.segment_id,
+            translation=segment.translation,
         )
 
     async def send_display_update() -> None:
@@ -391,7 +392,15 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
                     current = display_buffer.current
                     start_time = current.start_time if current and current.segment_id == segment_id else ts
                     
-                    # Create final segment
+                    # Translate for display with confirmed context
+                    confirmed_texts = [seg.text for seg in display_buffer.confirmed]
+                    try:
+                        translation = await translation_service.translate_for_display(text, confirmed_texts)
+                    except Exception:
+                        logger.exception("Display translation failed")
+                        translation = None
+                    
+                    # Create final segment with translation
                     segment = SubtitleSegment(
                         id=f"seg_{segment_id}",
                         text=text,
@@ -401,6 +410,7 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
                         is_final=True,
                         llm_corrected=False,
                         segment_id=segment_id,
+                        translation=translation,
                     )
                     
                     logger.info(f"[FINAL] segmentId={segment_id} text=\"{text[:100]}...\"" if len(text) > 100 else f"[FINAL] segmentId={segment_id} text=\"{text}\" is_final={segment.is_final}")

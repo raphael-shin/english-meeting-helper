@@ -8,6 +8,7 @@ English Meeting Helper - 실시간 영어 회의 지원 AI 어시스턴트
 - `product.md` - 제품 개요 및 핵심 기능
 - `tech.md` - 기술 스택 및 명령어
 - `structure.md` - 프로젝트 구조
+- `websocket-protocol.md` - WebSocket 이벤트/메시지 규약
 
 ## Quick Start
 
@@ -15,6 +16,10 @@ English Meeting Helper - 실시간 영어 회의 지원 AI 어시스턴트
 # 의존성 설치
 npm install
 pip install -r apps/api/requirements.txt
+
+# 환경변수
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
 
 # 개발 서버 실행
 npm run dev:web    # Frontend (localhost:5173)
@@ -45,6 +50,7 @@ npm run test:api   # pytest
 - **WebSocket**: 실시간 오디오 스트리밍 및 이벤트 처리
 - **Adapter Pattern**: 외부 서비스(STT, Translation) 분리
 - **Shared Contracts**: JSON Schema → TypeScript/Python 타입 생성
+- **Providers**: AWS/OPENAI 지원 (GOOGLE는 미구현)
 
 ## Testing
 
@@ -68,8 +74,12 @@ cp apps/web/.env.example apps/web/.env
 ```
 
 주요 환경변수:
+- `PROVIDER_MODE` - AWS/OPENAI 선택 (GOOGLE 미구현)
 - `AWS_REGION`, `AWS_PROFILE` - AWS 자격증명
-- `VITE_API_BASE_URL`, `VITE_WS_BASE_URL` - API 엔드포인트
+- `OPENAI_API_KEY` - OPENAI 모드 필수
+- `BEDROCK_TRANSLATION_MODEL_ID`, `BEDROCK_QUICK_TRANSLATE_MODEL_ID`, `BEDROCK_CORRECTION_MODEL_ID`
+- `LLM_CORRECTION_ENABLED`, `LLM_CORRECTION_BATCH_SIZE`, `LLM_CORRECTION_INTERVAL_SECONDS`
+- `VITE_API_BASE_URL`, `VITE_WS_BASE_URL` - API/WS 엔드포인트
 
 ## PR Guidelines
 

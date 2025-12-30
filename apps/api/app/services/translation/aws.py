@@ -33,6 +33,28 @@ class AWSTranslationService:
         response = await self._invoke_model(model_id, prompt)
         return response.strip()
 
+    async def translate_for_display(
+        self,
+        text: str,
+        confirmed_texts: list[str],
+    ) -> str:
+        """Translate for Live display with confirmed context."""
+        prompt_lines = [
+            "You are a real-time meeting translator. Translate English to natural Korean.",
+            "Use the confirmed context below for coherence and consistency.",
+            "Translate only the current sentence, maintaining flow with previous translations.",
+            "Never ask questions or add explanations. Respond in Korean only.",
+        ]
+        if confirmed_texts:
+            prompt_lines.append("\nConfirmed context (most recent first):")
+            prompt_lines.extend(f"- {ctx}" for ctx in confirmed_texts[:4])
+        prompt_lines.append(f"\nCurrent sentence: \"{text}\"")
+        prompt_lines.append("Return only the Korean translation.")
+        
+        prompt = "\n".join(prompt_lines)
+        response = await self._invoke_model(self.settings.bedrock_translation_model_id, prompt)
+        return response.strip()
+
     async def translate_ko_to_en(self, text: str) -> str:
         prompt = (
             "Translate the following Korean text to natural English:\n"

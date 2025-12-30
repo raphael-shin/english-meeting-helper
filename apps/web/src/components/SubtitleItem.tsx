@@ -44,20 +44,27 @@ export function SubtitleItem({ segment, variant }: SubtitleItemProps) {
             isConfirmed ? "bg-emerald-400/60" : "animate-ping bg-emerald-400"
           }`}
         />
-        <p
-          className={`flex-1 ${
-            isConfirmed
-              ? "text-sm font-semibold leading-relaxed text-white"
-              : "max-h-32 overflow-y-auto text-sm font-medium leading-relaxed text-emerald-100/90 italic"
-          }`}
-        >
-          {segment.text}
-          {!isConfirmed && (
-            <span className="ml-1 inline-block animate-blink text-emerald-300">
-              ▌
-            </span>
+        <div className="flex-1 space-y-1">
+          <p
+            className={`${
+              isConfirmed
+                ? "text-sm font-semibold leading-relaxed text-white"
+                : "max-h-32 overflow-y-auto text-sm font-medium leading-relaxed text-emerald-100/90 italic"
+            }`}
+          >
+            {segment.text}
+            {!isConfirmed && (
+              <span className="ml-1 inline-block animate-blink text-emerald-300">
+                ▌
+              </span>
+            )}
+          </p>
+          {segment.translation && (
+            <p className="text-xs leading-relaxed text-gray-300">
+              {segment.translation}
+            </p>
           )}
-        </p>
+        </div>
       </div>
     </div>
   );

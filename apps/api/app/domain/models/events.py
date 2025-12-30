@@ -75,6 +75,7 @@ class SubtitleSegmentEvent(CamelModel):
     is_final: bool
     llm_corrected: bool
     segment_id: int
+    translation: str | None = None
 
 
 class DisplayUpdateEvent(BaseEvent):

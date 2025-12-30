@@ -12,6 +12,7 @@ export interface SubtitleSegment {
   isFinal: boolean;
   llmCorrected: boolean;
   segmentId: number;
+  translation?: string;
 }
 
 export interface DisplayUpdateEvent extends BaseEvent {

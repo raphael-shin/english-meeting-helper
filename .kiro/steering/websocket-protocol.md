@@ -59,7 +59,42 @@ OpenAI 모드에서는 `sampleRate`를 `24000`으로 설정합니다.
 { "type": "server.pong", "ts": 1735350000000 }
 ```
 
-### transcript.partial
+### display.update (NEW)
+```json
+{
+  "type": "display.update",
+  "sessionId": "sess_123",
+  "ts": 1735350000123,
+  "confirmed": [
+    {
+      "id": "seg_41",
+      "text": "So the next step is to review the budget.",
+      "speaker": "spk_1",
+      "startTime": 1735350000456,
+      "endTime": 1735350001456,
+      "isFinal": true,
+      "llmCorrected": false,
+      "segmentId": 41
+    }
+  ],
+  "current": {
+    "id": "seg_42",
+    "text": "And then we need to",
+    "speaker": "spk_1",
+    "startTime": 1735350002000,
+    "endTime": null,
+    "isFinal": false,
+    "llmCorrected": false,
+    "segmentId": 42
+  }
+}
+```
+**Live 탭 표시용 이벤트:**
+- `confirmed`: 확정된 자막 (최대 4개, FIFO)
+- `current`: 현재 작성 중인 자막 (partial)
+- 동일 `segmentId`로 progressive update 수행
+
+### transcript.partial (Legacy)
 ```json
 {
   "type": "transcript.partial",
@@ -70,6 +105,7 @@ OpenAI 모드에서는 `sampleRate`를 `24000`으로 설정합니다.
   "segmentId": 41
 }
 ```
+**하위 호환용 이벤트** - `display.update`와 병행 발행
 
 ### transcript.final
 ```json
@@ -82,7 +118,19 @@ OpenAI 모드에서는 `sampleRate`를 `24000`으로 설정합니다.
   "segmentId": 41
 }
 ```
-`transcript.final` 이벤트는 문장 경계(`.`, `!`, `?`) 기준으로 완성된 문장(또는 1~2문장 청크)만 전달합니다. AWS Transcribe의 final 결과가 들어와도 문장이 완료되지 않은 경우에는 `transcript.partial`만 갱신될 수 있습니다.
+**Final 전사는 단일 segment로 처리** - 더 이상 chunking하지 않음
+
+### transcript.corrected (Optional)
+```json
+{
+  "type": "transcript.corrected",
+  "sessionId": "sess_123",
+  "segmentId": 42,
+  "originalText": "So the next step is to reveiw the budget.",
+  "correctedText": "So the next step is to review the budget."
+}
+```
+**LLM 보정 결과** - `LLM_CORRECTION_ENABLED=true`일 때만 발행
 
 ### translation.final
 ```json
@@ -96,9 +144,8 @@ OpenAI 모드에서는 `sampleRate`를 `24000`으로 설정합니다.
   "translatedText": "다음 단계는 예산을 검토하는 것입니다."
 }
 ```
-> `translation.final` 이벤트는 partial 전사에 대한 임시 번역 업데이트로도 전송될 수 있습니다.
 
-### translation.corrected
+### translation.corrected (Optional)
 ```json
 {
   "type": "translation.corrected",
@@ -109,9 +156,9 @@ OpenAI 모드에서는 `sampleRate`를 `24000`으로 설정합니다.
   "translatedText": "다음 단계는 예산을 검토하는 것입니다."
 }
 ```
-> `translation.corrected`는 LLM 보정 이후의 텍스트를 다시 번역한 결과를 비동기 갱신하는 이벤트입니다.
+**보정된 텍스트의 재번역 결과** - LLM 보정 후 비동기 발행
 
-### suggestions.update (P1)
+### suggestions.update
 ```json
 {
   "type": "suggestions.update",
@@ -138,3 +185,10 @@ OpenAI 모드에서는 `sampleRate`를 `24000`으로 설정합니다.
 - `BEDROCK_ERROR`: Bedrock 호출 오류
 - `SESSION_NOT_FOUND`: 세션 없음
 - `INVALID_MESSAGE`: 잘못된 메시지 형식
+
+## 주요 변경사항 (2025-12-30)
+1. **display.update 이벤트 추가**: Live 탭 전용 display buffer 관리
+2. **단일 segment Final**: chunking 제거, Final은 하나의 완전한 문장
+3. **Progressive partial updates**: 동일 segmentId 유지
+4. **LLM correction 이벤트**: transcript.corrected, translation.corrected 추가
+5. **Partial Result Stabilization**: AWS Transcribe "high" stability 적용

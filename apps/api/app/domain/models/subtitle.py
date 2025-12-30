@@ -16,6 +16,7 @@ class SubtitleSegment:
     is_final: bool
     llm_corrected: bool
     segment_id: int
+    translation: Optional[str] = None
 
 
 @dataclass(slots=True)
