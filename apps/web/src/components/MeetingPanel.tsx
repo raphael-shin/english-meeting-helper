@@ -154,6 +154,37 @@ export function MeetingPanel({
             aria-live="polite"
             aria-label="Live transcripts"
           >
+            {isPaused && (
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-orange-200/40 bg-orange-50/10 px-4 py-3 text-orange-100">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500/20 text-orange-200">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      aria-hidden
+                    >
+                      <path
+                        d="M7 4V20M17 4V20"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold">Paused</p>
+                    <p className="text-xs text-orange-200/80">
+                      Resume to continue capturing live captions.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-orange-200/70">
+                  Hold
+                </span>
+              </div>
+            )}
             {displayBuffer.confirmed.length === 0 && !displayBuffer.current ? (
               <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-emerald-100/80">
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/70">

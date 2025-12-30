@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 interface TranscribeControlsProps {
   isRecording: boolean;
   isPaused: boolean;
@@ -15,8 +17,11 @@ export function TranscribeControls({
   onResume,
   onEnd,
 }: TranscribeControlsProps) {
+  const [showConfirm, setShowConfirm] = useState(false);
+  const canEnd = isRecording || isPaused;
+
   return (
-    <div className="flex items-center gap-3">
+    <div className="relative flex items-center gap-3">
       {isRecording ? (
         <button
           onClick={onPause}
@@ -44,13 +49,47 @@ export function TranscribeControls({
         </button>
       )}
       <button
-        onClick={onEnd}
-        disabled={!isRecording && !isPaused}
+        onClick={() => setShowConfirm(true)}
+        disabled={!canEnd}
         className="rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
         aria-label="End session"
       >
         End session
       </button>
+      {showConfirm && (
+        <div className="absolute right-0 top-14 z-50 w-72 rounded-2xl border border-white/70 bg-white/95 p-4 shadow-xl backdrop-blur">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-600">
+              <span className="text-sm font-bold">!</span>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">
+                End this session?
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Live captions will be cleared. History stays in this tab.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <button
+              onClick={() => setShowConfirm(false)}
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                setShowConfirm(false);
+                onEnd();
+              }}
+              className="rounded-full bg-red-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-red-600"
+            >
+              End session
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

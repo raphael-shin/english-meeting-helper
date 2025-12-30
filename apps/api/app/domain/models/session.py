@@ -112,7 +112,10 @@ class MeetingSession:
         self._partial_state = None
         
         # Use pending segment_id from partial state, or create new one
-        segment_id = partial_state.segment_id if partial_state else self._next_segment_id()
+        if partial_state and partial_state.segment_id is not None:
+            segment_id = partial_state.segment_id
+        else:
+            segment_id = self._next_segment_id()
         
         # Store in transcripts
         speaker = "spk_1"

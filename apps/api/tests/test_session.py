@@ -94,6 +94,16 @@ class TestExtractPartialEmit:
         assert result is not None
         assert result.translation_text == "Hello world."
 
+    def test_final_transcript_assigns_segment_id_after_short_partial(self) -> None:
+        session = MeetingSession("sess")
+        short_text = "Short"
+        result = session.extract_partial_emit("spk_1", 100, short_text)
+        assert result is None
+
+        text, segment_id = session.add_final_transcript("spk_1", "Hello.", 200)
+        assert text == "Hello."
+        assert segment_id == 1
+
 
 class TestIsPartialTranslationCurrent:
     """is_partial_translation_current() 상태 매칭 테스트"""

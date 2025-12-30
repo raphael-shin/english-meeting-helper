@@ -52,7 +52,7 @@ export function TopBar({
   ));
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4 rounded-[28px] border border-white/60 bg-white/80 px-5 py-3 shadow-[var(--shadow)] backdrop-blur">
+    <header className="relative z-30 flex flex-wrap items-center justify-between gap-4 rounded-[28px] border border-white/60 bg-white/80 px-5 py-3 shadow-[var(--shadow)] backdrop-blur">
       <div className="flex items-center gap-4">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white shadow-sm">
           <span className="text-base font-semibold">N</span>
@@ -72,6 +72,45 @@ export function TopBar({
             className={`h-2.5 w-2.5 rounded-full ${statusTone}`}
             aria-hidden
           />
+          <span className="text-slate-500">
+            {isPaused ? (
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden
+              >
+                <path
+                  d="M4 9V15M8 7V17M12 5V19M16 7V17M20 9V15"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M3 3L21 21"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ) : (
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden
+              >
+                <path
+                  d="M4 9V15M8 7V17M12 5V19M16 7V17M20 9V15"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
+          </span>
           <span>{statusLabel}</span>
           {(isRecording || isPaused) && (
             <div
