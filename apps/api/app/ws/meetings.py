@@ -81,6 +81,7 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
     background_tasks: set[asyncio.Task] = set()
     translation_semaphore = asyncio.Semaphore(2)
     suggestion_semaphore = asyncio.Semaphore(1)
+    partial_translation_tasks: dict[int, asyncio.Task] = {}
 
     async def send_payload(payload: dict[str, Any]) -> None:
         if is_closing:
@@ -164,29 +165,43 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
         speaker: str,
     ) -> None:
         """Translate partial text for Composing area (async, non-blocking)."""
-        if is_closing:
-            return
-        async with translation_semaphore:
-            started = time.perf_counter()
-            try:
-                translated = await translation_service.translate_en_to_ko(source_text)
-            except Exception:
-                logger.exception("Partial display translation failed")
+        try:
+            if is_closing:
                 return
             
-            # Update display buffer with translation
-            display_buffer = session.get_display_buffer()
-            if display_buffer.current and display_buffer.current.segment_id == segment_id:
-                display_buffer.current.translation = translated
-                await send_display_update()
-                log_event(
-                    logger,
-                    "translation.partial_display",
-                    session_id=session_id,
-                    segment_id=segment_id,
-                    text_len=len(source_text),
-                    latency_ms=int((time.perf_counter() - started) * 1000),
-                )
+            # Minimum length check to reduce noise
+            if len(source_text) < 30:
+                return
+            
+            # Debounce: wait 1.2s before translating
+            await asyncio.sleep(1.2)
+            
+            async with translation_semaphore:
+                started = time.perf_counter()
+                try:
+                    translated = await translation_service.translate_en_to_ko(source_text)
+                except Exception:
+                    logger.exception("Partial display translation failed")
+                    return
+                
+                # Update display buffer with translation
+                display_buffer = session.get_display_buffer()
+                if display_buffer.current and display_buffer.current.segment_id == segment_id:
+                    display_buffer.current.translation = translated
+                    await send_display_update()
+                    log_event(
+                        logger,
+                        "translation.partial_display",
+                        session_id=session_id,
+                        segment_id=segment_id,
+                        text_len=len(source_text),
+                        latency_ms=int((time.perf_counter() - started) * 1000),
+                    )
+        except asyncio.CancelledError:
+            pass
+        finally:
+            # Clean up task reference
+            partial_translation_tasks.pop(segment_id, None)
 
     async def translate_final_text(
         source_text: str,
@@ -352,16 +367,20 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
                         session.update_display_buffer(segment)
                         await send_display_update()
                         
-                        # Start async translation for Composing area
-                        track_task(
-                            asyncio.create_task(
-                                translate_partial_for_display(
-                                    partial_emit.caption_text,
-                                    partial_emit.segment_id,
-                                    speaker,
-                                )
+                        # Cancel previous translation task for this segment (debouncing)
+                        if partial_emit.segment_id in partial_translation_tasks:
+                            partial_translation_tasks[partial_emit.segment_id].cancel()
+                        
+                        # Start new async translation for Composing area
+                        task = asyncio.create_task(
+                            translate_partial_for_display(
+                                partial_emit.caption_text,
+                                partial_emit.segment_id,
+                                speaker,
                             )
                         )
+                        partial_translation_tasks[partial_emit.segment_id] = task
+                        track_task(task)
                         
                         log_event(
                             logger,
