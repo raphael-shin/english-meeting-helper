@@ -72,9 +72,48 @@ npm run dev:web
 ```
 
 ### 4) Docker Compose
+
+**Prerequisites:**
+Before running Docker Compose, ensure you have installed dependencies and created the backend environment file:
 ```bash
+# Install dependencies (required for the frontend volume mount)
+npm install
+
+# Create backend environment file
+cp apps/api/.env.example apps/api/.env
+```
+
+Run the following command from the **project root directory**:
+
+#### Option A: Using AWS Credentials File (Recommended)
+```bash
+# Ensure ~/.aws/credentials exists with your profile
 docker-compose up
 ```
+
+Docker will mount your `~/.aws` directory (read-only) and use the credentials.
+
+#### Option B: Using Environment Variables
+```bash
+# Export temporary credentials
+export AWS_ACCESS_KEY_ID=your_access_key
+export AWS_SECRET_ACCESS_KEY=your_secret_key
+export AWS_SESSION_TOKEN=your_session_token  # if using temporary credentials
+
+docker-compose up
+```
+
+#### Option C: Using AWS Profile
+```bash
+# Use specific AWS profile
+AWS_PROFILE=your-profile docker-compose up
+```
+
+**Note**: 
+- Backend runs on `http://localhost:8000`
+- Frontend runs on `http://localhost:5173`
+- AWS credentials are mounted read-only for security
+- `.env` file is automatically loaded from `apps/api/.env`
 
 ## Local Testing / Build / Generate
 ```bash

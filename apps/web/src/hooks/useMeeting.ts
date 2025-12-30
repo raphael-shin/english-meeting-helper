@@ -42,6 +42,10 @@ export interface OrphanTranslationEntry extends TranslationEntry {
   ts: number;
 }
 
+export interface SummaryData {
+  markdown: string;
+}
+
 export interface MeetingState {
   isConnected: boolean;
   isRecording: boolean;
@@ -51,6 +55,9 @@ export interface MeetingState {
   transcripts: TranscriptEntry[];
   orphanTranslations: OrphanTranslationEntry[];
   suggestions: SuggestionItem[];
+  summary: SummaryData | null;
+  summaryStatus: "idle" | "loading" | "ready" | "error";
+  summaryError: string | null;
   error: ErrorEvent | null;
   displayBuffer: {
     confirmed: SubtitleSegment[];
@@ -80,6 +87,9 @@ export function useMeeting(
     transcripts: [],
     orphanTranslations: [],
     suggestions: [],
+    summary: null,
+    summaryStatus: "idle",
+    summaryError: null,
     error: null,
     displayBuffer: { confirmed: [], current: null },
   });
@@ -362,6 +372,18 @@ export function useMeeting(
       case "suggestions.update":
         setState((current) => ({ ...current, suggestions: event.items }));
         break;
+      case "summary.update":
+        setState((current) => ({
+          ...current,
+          summary: event.summaryMarkdown
+            ? {
+                markdown: event.summaryMarkdown,
+              }
+            : null,
+          summaryStatus: event.error ? "error" : "ready",
+          summaryError: event.error ?? null,
+        }));
+        break;
       case "error":
         setState((current) => ({ ...current, error: event }));
         break;
@@ -421,6 +443,9 @@ export function useMeeting(
       transcripts: [],
       orphanTranslations: [],
       suggestions: [],
+      summary: null,
+      summaryStatus: "idle",
+      summaryError: null,
       error: null,
       displayBuffer: { confirmed: [], current: null },
     }));
@@ -517,6 +542,23 @@ export function useMeeting(
     },
     [state.isConnected]
   );
+
+  const requestSummary = useCallback(() => {
+    if (!wsClientRef.current || !state.isConnected) {
+      setState((current) => ({
+        ...current,
+        summaryStatus: "error",
+        summaryError: "Not connected.",
+      }));
+      return;
+    }
+    setState((current) => ({
+      ...current,
+      summaryStatus: "loading",
+      summaryError: null,
+    }));
+    wsClientRef.current.sendControl({ type: "summary.request" });
+  }, [state.isConnected]);
 
   useEffect(() => {
     if (!state.isConnected) {
@@ -615,5 +657,6 @@ export function useMeeting(
     reconnect,
     dismissError,
     sendSuggestionsPrompt,
+    requestSummary,
   };
 }

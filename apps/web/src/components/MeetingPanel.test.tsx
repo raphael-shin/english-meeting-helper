@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { vi } from "vitest";
 
 import { MeetingPanel } from "./MeetingPanel";
 import { SubtitleSegment } from "../types/events";
@@ -9,9 +10,13 @@ const baseProps = {
   displayBuffer: { confirmed: [], current: null },
   transcripts: [],
   orphanTranslations: [],
+  summary: null,
+  summaryStatus: "idle" as const,
+  summaryError: null,
   error: null,
   onReconnect: () => {},
   onDismissError: () => {},
+  onSummaryRequest: () => {},
 };
 
 test("shows empty state when not recording", () => {
@@ -71,4 +76,60 @@ test("renders confirmed and current subtitles", () => {
   expect(screen.getByText("Current line")).toBeInTheDocument();
   expect(screen.getByText(/Composing/i)).toBeInTheDocument();
   expect(screen.getAllByText("▌")).toHaveLength(1);
+});
+
+test("summary button triggers request in history tab", () => {
+  const onSummaryRequest = vi.fn();
+  render(
+    <MeetingPanel
+      {...baseProps}
+      transcripts={[
+        {
+          id: "final-1",
+          kind: "transcript",
+          speaker: "spk_1",
+          text: "Hello",
+          isFinal: true,
+          ts: 1,
+          segmentId: 1,
+          translations: [],
+        },
+      ]}
+      onSummaryRequest={onSummaryRequest}
+    />
+  );
+
+  fireEvent.click(screen.getByRole("tab", { name: "History" }));
+  fireEvent.click(screen.getByRole("button", { name: /Generate meeting summary/i }));
+  expect(onSummaryRequest).toHaveBeenCalledTimes(1);
+});
+
+test("renders summary card when ready", () => {
+  render(
+    <MeetingPanel
+      {...baseProps}
+      transcripts={[
+        {
+          id: "final-1",
+          kind: "transcript",
+          speaker: "spk_1",
+          text: "Hello",
+          isFinal: true,
+          ts: 1,
+          segmentId: 1,
+          translations: [],
+        },
+      ]}
+      summary={{
+        markdown: "## 5줄 요약\n- 요약 1\n- 요약 2\n- 요약 3\n- 요약 4\n- 요약 5\n\n## 핵심 내용\n- 핵심 1\n- 핵심 2\n\n## Action Items\n- 액션 1",
+      }}
+      summaryStatus="ready"
+    />
+  );
+
+  fireEvent.click(screen.getByRole("tab", { name: "History" }));
+  expect(screen.getByText("Meeting Summary")).toBeInTheDocument();
+  expect(screen.getByText("요약 1")).toBeInTheDocument();
+  expect(screen.getByText("핵심 1")).toBeInTheDocument();
+  expect(screen.getByText("액션 1")).toBeInTheDocument();
 });

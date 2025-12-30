@@ -17,6 +17,7 @@ from app.domain.models.events import (
     SessionStopEvent,
     SubtitleSegmentEvent,
     SuggestionsUpdateEvent,
+    SummaryUpdateEvent,
     TranscriptCorrectedEvent,
     TranscriptFinalEvent,
     TranscriptPartialEvent,
@@ -29,6 +30,7 @@ from app.domain.models.provider import TranscriptResult
 from app.domain.models.subtitle import SubtitleSegment
 from app.services.stt import STTServiceProtocol, create_stt_service
 from app.services.suggestion import SuggestionService
+from app.services.summary import SummaryService
 from app.services.correction import CorrectionQueue
 from app.services.translation import TranslationServiceProtocol, create_translation_service
 from app.services.translation.aws import AWSTranslationService
@@ -68,6 +70,10 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
     if suggestion_service is None:
         suggestion_service = SuggestionService(bedrock_service, settings)
         websocket.app.state.suggestion_service = suggestion_service
+    summary_service: SummaryService | None = getattr(websocket.app.state, "summary_service", None)
+    if summary_service is None:
+        summary_service = SummaryService(bedrock_service, settings)
+        websocket.app.state.summary_service = summary_service
     session = MeetingSession(session_id)
     transcribe_service = create_stt_service(settings)
     correction_queue: CorrectionQueue | None = None
@@ -81,6 +87,7 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
     background_tasks: set[asyncio.Task] = set()
     translation_semaphore = asyncio.Semaphore(2)
     suggestion_semaphore = asyncio.Semaphore(1)
+    summary_semaphore = asyncio.Semaphore(1)
     partial_translation_tasks: dict[int, asyncio.Task] = {}
 
     async def send_payload(payload: dict[str, Any]) -> None:
@@ -347,6 +354,58 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
             )
             session.mark_suggestions_updated()
 
+    async def generate_and_send_summary() -> None:
+        if is_closing:
+            return
+        if summary_semaphore.locked():
+            return
+        async with summary_semaphore:
+            if not session.transcripts:
+                await send_event(
+                    SummaryUpdateEvent(
+                        session_id=session_id,
+                        summary_markdown=None,
+                        error="No transcripts to summarize yet.",
+                    )
+                )
+                return
+            started = time.perf_counter()
+            try:
+                result = await summary_service.generate_summary(session.transcripts)
+            except Exception as e:
+                logger.exception("Summary generation failed")
+                error_msg = f"Failed to generate summary: {str(e)[:100]}"
+                await send_event(
+                    SummaryUpdateEvent(
+                        session_id=session_id,
+                        summary_markdown=None,
+                        error=error_msg,
+                    )
+                )
+                return
+            if not result:
+                await send_event(
+                    SummaryUpdateEvent(
+                        session_id=session_id,
+                        summary_markdown=None,
+                        error="Failed to generate summary.",
+                    )
+                )
+                return
+            await send_event(
+                SummaryUpdateEvent(
+                    session_id=session_id,
+                    summary_markdown=result,
+                )
+            )
+            log_event(
+                logger,
+                "summary.update",
+                session_id=session_id,
+                length=len(result),
+                latency_ms=int((time.perf_counter() - started) * 1000),
+            )
+
     async def handle_transcribe_events(events: AsyncIterator[TranscriptResult]) -> None:
         try:
             async for result in events:
@@ -520,7 +579,13 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
             if message.get("type") == "websocket.disconnect":
                 break
             if message.get("text") is not None:
-                await _handle_control_message(message["text"], send_payload, session, transcribe_service)
+                await _handle_control_message(
+                    message["text"],
+                    send_payload,
+                    session,
+                    transcribe_service,
+                    generate_and_send_summary,
+                )
                 if _is_session_stop(message["text"]):
                     await send_event(SessionStopEvent())
                     is_closing = True
@@ -557,6 +622,7 @@ async def _handle_control_message(
     send_payload,
     session: MeetingSession,
     stt_service: STTServiceProtocol,
+    on_summary_request,
 ) -> None:
     try:
         payload = json.loads(raw_text)
@@ -586,6 +652,14 @@ async def _handle_control_message(
             text_len=len(prompt.strip()),
         )
         session.set_suggestions_prompt(prompt)
+        return
+    if message_type == "summary.request":
+        log_event(
+            logger,
+            "summary.request",
+            session_id=session.session_id,
+        )
+        await on_summary_request()
         return
     if message_type == "session.start":
         sample_rate = payload.get("sampleRate")

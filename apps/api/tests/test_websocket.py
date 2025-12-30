@@ -19,6 +19,11 @@ class FakeTranslationService:
     ) -> str:
         return "translated_history"
 
+    async def translate_for_display(
+        self, text: str, confirmed_texts: list[str]
+    ) -> str:
+        return "translated_display"
+
     async def translate_ko_to_en(self, text: str) -> str:
         return "translated"
 
@@ -28,6 +33,11 @@ class FakeSuggestionService:
         self, transcripts, system_prompt=None
     ):
         return []
+
+
+class FakeSummaryService:
+    async def generate_summary(self, transcripts):  # type: ignore[no-untyped-def]
+        return "## 5줄 요약\n- 요약 1\n- 요약 2\n- 요약 3\n- 요약 4\n- 요약 5\n"
 
 
 def make_stt_service(events: Callable[[], AsyncIterator[TranscriptResult]]) -> type:
@@ -58,6 +68,7 @@ def _set_app_state() -> None:
     app.state.translation_service = FakeTranslationService()
     app.state.bedrock_service = FakeTranslationService()
     app.state.suggestion_service = FakeSuggestionService()
+    app.state.summary_service = FakeSummaryService()
 
 
 def test_ws_emits_transcript_events(monkeypatch) -> None:
@@ -127,3 +138,42 @@ def test_ws_invalid_message_returns_error(monkeypatch) -> None:
         response = websocket.receive_json()
         assert response["type"] == "error"
         assert response["code"] == "INVALID_MESSAGE"
+
+
+def test_ws_summary_request_without_transcripts(monkeypatch) -> None:
+    async def empty_stream() -> AsyncIterator[TranscriptResult]:
+        if False:  # pragma: no cover
+            yield TranscriptResult(is_partial=True, text="", speaker="spk_1")
+
+    _set_app_state()
+    monkeypatch.setattr(meetings_module, "create_stt_service", lambda settings: make_stt_service(empty_stream)(settings))
+
+    client = TestClient(app)
+    with client.websocket_connect("/ws/v1/meetings/test-session") as websocket:
+        websocket.send_text('{"type":"summary.request"}')
+        response = websocket.receive_json()
+        assert response["type"] == "summary.update"
+        assert response["error"] == "No transcripts to summarize yet."
+
+
+def test_ws_summary_request_after_transcript(monkeypatch) -> None:
+    async def transcript_stream() -> AsyncIterator[TranscriptResult]:
+        yield TranscriptResult(is_partial=False, text="Hello world.", speaker="spk_1")
+
+    _set_app_state()
+    monkeypatch.setattr(meetings_module, "create_stt_service", lambda settings: make_stt_service(transcript_stream)(settings))
+
+    client = TestClient(app)
+    with client.websocket_connect("/ws/v1/meetings/test-session") as websocket:
+        message = websocket.receive_json()
+        while message.get("type") in {"server.pong", "display.update", "translation.final"}:
+            message = websocket.receive_json()
+
+        assert message["type"] == "transcript.final"
+
+        websocket.send_text('{"type":"summary.request"}')
+        response = websocket.receive_json()
+        while response.get("type") in {"translation.final", "display.update"}:
+            response = websocket.receive_json()
+        assert response["type"] == "summary.update"
+        assert response["summaryMarkdown"].startswith("## 5줄 요약")

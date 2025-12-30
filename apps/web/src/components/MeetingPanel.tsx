@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { ErrorEvent, SubtitleSegment } from "../types/events";
 import {
   OrphanTranslationEntry,
+  SummaryData,
   TranscriptEntry,
 } from "../hooks/useMeeting";
 import { ErrorBanner } from "./ErrorBanner";
@@ -21,9 +22,13 @@ interface MeetingPanelProps {
   };
   transcripts: TranscriptEntry[];
   orphanTranslations: OrphanTranslationEntry[];
+  summary: SummaryData | null;
+  summaryStatus: "idle" | "loading" | "ready" | "error";
+  summaryError: string | null;
   error: ErrorEvent | null;
   onReconnect: () => void;
   onDismissError: () => void;
+  onSummaryRequest: () => void;
 }
 
 export function MeetingPanel({
@@ -32,13 +37,20 @@ export function MeetingPanel({
   displayBuffer,
   transcripts,
   orphanTranslations,
+  summary,
+  summaryStatus,
+  summaryError,
   error,
   onReconnect,
   onDismissError,
+  onSummaryRequest,
 }: MeetingPanelProps) {
   const [activeTab, setActiveTab] = useState<"live" | "history">("live");
   const [historyView, setHistoryView] = useState<"both" | "ko" | "en">("both");
   const [historyCopied, setHistoryCopied] = useState(false);
+  const [summaryCopied, setSummaryCopied] = useState(false);
+  const summaryDisabled = transcripts.length === 0 || summaryStatus === "loading";
+  const showSummary = summaryStatus !== "idle" || summary;
   const liveScrollRef = useRef<HTMLDivElement>(null);
   const historyScrollRef = useRef<HTMLDivElement>(null);
   const historyTimeline = [...transcripts, ...orphanTranslations].sort((left, right) => {
@@ -97,6 +109,129 @@ export function MeetingPanel({
     } catch (error) {
       console.error("Failed to copy history:", error);
     }
+  };
+
+  const handleCopySummary = async () => {
+    if (!summary?.markdown) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(summary.markdown);
+      setSummaryCopied(true);
+      window.setTimeout(() => setSummaryCopied(false), 1500);
+    } catch (error) {
+      console.error("Failed to copy summary:", error);
+    }
+  };
+
+  const renderMarkdown = (markdown: string) => {
+    const lines = markdown.split("\n");
+    const blocks: Array<{ type: string; content: string[] }> = [];
+    let current: { type: string; content: string[] } | null = null;
+
+    const flush = () => {
+      if (current) {
+        blocks.push(current);
+        current = null;
+      }
+    };
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line) {
+        flush();
+        continue;
+      }
+      if (line.startsWith("#")) {
+        flush();
+        const level = line.match(/^#+/)?.[0].length ?? 1;
+        blocks.push({ type: `h${Math.min(level, 3)}`, content: [line.replace(/^#+\s*/, "")] });
+        continue;
+      }
+      if (/^\d+\.\s+/.test(line)) {
+        if (!current || current.type !== "ol") {
+          flush();
+          current = { type: "ol", content: [] };
+        }
+        current.content.push(line.replace(/^\d+\.\s+/, ""));
+        continue;
+      }
+      if (line.startsWith("- ") || line.startsWith("* ")) {
+        if (!current || current.type !== "ul") {
+          flush();
+          current = { type: "ul", content: [] };
+        }
+        current.content.push(line.replace(/^[-*]\s+/, ""));
+        continue;
+      }
+      if (!current || current.type !== "p") {
+        flush();
+        current = { type: "p", content: [] };
+      }
+      current.content.push(line);
+    }
+    flush();
+
+    const renderInline = (text: string) => {
+      const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+      return parts.map((part, index) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return <strong key={`${part}-${index}`}>{part.slice(2, -2)}</strong>;
+        }
+        if (part.startsWith("`") && part.endsWith("`")) {
+          return (
+            <code
+              key={`${part}-${index}`}
+              className="rounded bg-slate-100 px-1 py-0.5 text-[0.85em]"
+            >
+              {part.slice(1, -1)}
+            </code>
+          );
+        }
+        return <span key={`${part}-${index}`}>{part}</span>;
+      });
+    };
+
+    return blocks.map((block, index) => {
+      if (block.type === "h1" || block.type === "h2" || block.type === "h3") {
+        const HeadingTag = block.type as "h1" | "h2" | "h3";
+        return (
+          <HeadingTag
+            key={`${block.type}-${index}`}
+            className="text-sm font-semibold text-slate-800"
+          >
+            {renderInline(block.content.join(" "))}
+          </HeadingTag>
+        );
+      }
+      if (block.type === "ul") {
+        return (
+          <ul key={`ul-${index}`} className="space-y-1 pl-4 text-sm text-slate-700">
+            {block.content.map((item, itemIndex) => (
+              <li key={`${item}-${itemIndex}`} className="list-disc">
+                {renderInline(item)}
+              </li>
+            ))}
+          </ul>
+        );
+      }
+      if (block.type === "ol") {
+        return (
+          <ol key={`ol-${index}`} className="space-y-1 pl-4 text-sm text-slate-700">
+            {block.content.map((item, itemIndex) => (
+              <li key={`${item}-${itemIndex}`} className="list-decimal">
+                {renderInline(item)}
+              </li>
+            ))}
+          </ol>
+        );
+      }
+      return (
+        <p key={`p-${index}`} className="text-sm text-slate-700">
+          {renderInline(block.content.join(" "))}
+        </p>
+      );
+    });
   };
 
   return (
@@ -324,33 +459,52 @@ export function MeetingPanel({
                 English
               </button>
             </div>
-            <button
-              type="button"
-              onClick={handleCopyHistory}
-              aria-label={historyCopied ? "Copied" : "Copy all transcripts"}
-              className={`flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition ${
-                historyCopied
-                  ? "border-emerald-200 bg-emerald-50"
-                  : "border-slate-200 bg-white hover:bg-slate-50"
-              }`}
-            >
-              <span
-                aria-hidden
-                className={`h-4 w-4 ${
-                  historyCopied ? "bg-emerald-600" : "bg-slate-600"
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onSummaryRequest}
+                disabled={summaryDisabled}
+                aria-label="Generate meeting summary"
+                className={`flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition ${
+                  summaryDisabled
+                    ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                 }`}
-                style={{
-                  maskImage: `url(${copyIcon})`,
-                  maskRepeat: "no-repeat",
-                  maskPosition: "center",
-                  maskSize: "contain",
-                  WebkitMaskImage: `url(${copyIcon})`,
-                  WebkitMaskRepeat: "no-repeat",
-                  WebkitMaskPosition: "center",
-                  WebkitMaskSize: "contain",
-                }}
-              />
-            </button>
+              >
+                {summaryStatus === "loading" ? (
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                ) : (
+                  <span className="text-[11px] uppercase tracking-wide">Summary</span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyHistory}
+                aria-label={historyCopied ? "Copied" : "Copy all transcripts"}
+                className={`flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition ${
+                  historyCopied
+                    ? "border-emerald-200 bg-emerald-50"
+                    : "border-slate-200 bg-white hover:bg-slate-50"
+                }`}
+              >
+                <span
+                  aria-hidden
+                  className={`h-4 w-4 ${
+                    historyCopied ? "bg-emerald-600" : "bg-slate-600"
+                  }`}
+                  style={{
+                    maskImage: `url(${copyIcon})`,
+                    maskRepeat: "no-repeat",
+                    maskPosition: "center",
+                    maskSize: "contain",
+                    WebkitMaskImage: `url(${copyIcon})`,
+                    WebkitMaskRepeat: "no-repeat",
+                    WebkitMaskPosition: "center",
+                    WebkitMaskSize: "contain",
+                  }}
+                />
+              </button>
+            </div>
           </div>
           <div
             ref={historyScrollRef}
@@ -382,6 +536,69 @@ export function MeetingPanel({
                   />
                 )
               )
+            )}
+            {showSummary && (
+              <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-white to-slate-50 px-4 py-4 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      Meeting Summary
+                    </p>
+                    <h3 className="text-sm font-semibold text-slate-800">
+                      요약
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {summaryStatus === "loading" && (
+                      <span className="text-xs text-slate-400">Generating...</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleCopySummary}
+                      disabled={!summary?.markdown}
+                      aria-label={summaryCopied ? "Summary copied" : "Copy summary"}
+                      className={`flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition ${
+                        summary?.markdown
+                          ? summaryCopied
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                          : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                      }`}
+                    >
+                      <span
+                        aria-hidden
+                        className={`h-3.5 w-3.5 ${
+                          summaryCopied ? "bg-emerald-600" : "bg-slate-500"
+                        }`}
+                        style={{
+                          maskImage: `url(${copyIcon})`,
+                          maskRepeat: "no-repeat",
+                          maskPosition: "center",
+                          maskSize: "contain",
+                          WebkitMaskImage: `url(${copyIcon})`,
+                          WebkitMaskRepeat: "no-repeat",
+                          WebkitMaskPosition: "center",
+                          WebkitMaskSize: "contain",
+                        }}
+                      />
+                      <span>{summaryCopied ? "Copied" : "Copy summary"}</span>
+                    </button>
+                  </div>
+                </div>
+                {summaryStatus === "loading" && (
+                  <div className="mt-3 space-y-2">
+                    <div className="h-2 w-3/4 rounded-full bg-slate-100" />
+                    <div className="h-2 w-2/3 rounded-full bg-slate-100" />
+                    <div className="h-2 w-4/5 rounded-full bg-slate-100" />
+                  </div>
+                )}
+                {summaryStatus === "error" && summaryError && (
+                  <p className="mt-3 text-sm text-rose-500">{summaryError}</p>
+                )}
+                {summaryStatus !== "loading" && summary?.markdown && !summaryError && (
+                  <div className="mt-4 space-y-3">{renderMarkdown(summary.markdown)}</div>
+                )}
+              </div>
             )}
           </div>
         </div>

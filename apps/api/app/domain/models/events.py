@@ -96,6 +96,13 @@ class SuggestionsUpdateEvent(BaseEvent):
     items: list[SuggestionItem]
 
 
+class SummaryUpdateEvent(BaseEvent):
+    type: Literal["summary.update"] = "summary.update"
+    session_id: str
+    summary_markdown: str | None = None
+    error: str | None = None
+
+
 class ErrorEvent(BaseEvent):
     type: Literal["error"] = "error"
     code: str

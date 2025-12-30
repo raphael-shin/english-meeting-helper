@@ -26,6 +26,11 @@ class FakeTranslationService:
     ) -> str:
         return "translated_history"
 
+    async def translate_for_display(
+        self, text: str, confirmed_texts: list[str]
+    ) -> str:
+        return "translated_display"
+
     async def translate_ko_to_en(self, text: str) -> str:
         return "translated"
 

@@ -27,11 +27,14 @@ vi.mock("../lib/audio", () => ({
 vi.mock("../lib/ws", () => {
   let lastClient: {
     emit?: (event: unknown) => void;
+    sendControl?: (message: unknown) => void;
+    sentControls?: unknown[];
   } | null = null;
 
   class MeetingWsClient {
     private onEvent?: (event: unknown) => void;
     private onConnectionChange?: (connected: boolean) => void;
+    private sentControls: unknown[] = [];
 
     constructor(
       _baseUrl: string,
@@ -40,7 +43,11 @@ vi.mock("../lib/ws", () => {
     ) {
       this.onEvent = onEvent;
       this.onConnectionChange = onConnectionChange;
-      lastClient = this;
+      lastClient = {
+        emit: (event) => this.emit(event),
+        sendControl: (message) => this.sendControl(message),
+        sentControls: this.sentControls,
+      };
     }
 
     connect() {
@@ -53,7 +60,9 @@ vi.mock("../lib/ws", () => {
 
     sendAudio() {}
 
-    sendControl() {}
+    sendControl(message: unknown) {
+      this.sentControls.push(message);
+    }
 
     disconnect() {
       this.onConnectionChange?.(false);
@@ -77,8 +86,13 @@ function TestHarness() {
       <button type="button" onClick={() => meeting.startMeeting()}>
         start
       </button>
+      <button type="button" onClick={() => meeting.requestSummary()}>
+        summary
+      </button>
       <pre data-testid="display">{JSON.stringify(meeting.displayBuffer)}</pre>
       <pre data-testid="transcripts">{JSON.stringify(meeting.transcripts)}</pre>
+      <pre data-testid="summary">{JSON.stringify(meeting.summary)}</pre>
+      <pre data-testid="summary-status">{meeting.summaryStatus}</pre>
     </div>
   );
 }
@@ -439,6 +453,52 @@ test("moves current to confirmed on final", async () => {
     expect(display.confirmed[0].text).toBe("Smart founders apply to YC.");
     expect(display.current).toBeNull();
   });
+});
+
+test("handles summary.update event", async () => {
+  render(<TestHarness />);
+  const button = screen.getByRole("button", { name: "start" });
+
+  await act(async () => {
+    fireEvent.click(button);
+  });
+
+  const client = __getLastWsClient();
+  expect(client).not.toBeNull();
+
+  await act(async () => {
+    client?.emit?.({
+      type: "summary.update",
+      ts: Date.now(),
+      sessionId: "sess_1",
+      summaryMarkdown: "## 5줄 요약\n- 요약 1\n- 요약 2\n- 요약 3\n- 요약 4\n- 요약 5\n\n## 핵심 내용\n- 핵심 1",
+    });
+  });
+
+  await waitFor(() => {
+    const payload = screen.getByTestId("summary").textContent ?? "{}";
+    const summary = JSON.parse(payload);
+    expect(summary.markdown).toContain("## 5줄 요약");
+    expect(screen.getByTestId("summary-status").textContent).toBe("ready");
+  });
+});
+
+test("requests summary over websocket", async () => {
+  render(<TestHarness />);
+  const startButton = screen.getByRole("button", { name: "start" });
+  const summaryButton = screen.getByRole("button", { name: "summary" });
+
+  await act(async () => {
+    fireEvent.click(startButton);
+  });
+
+  await act(async () => {
+    fireEvent.click(summaryButton);
+  });
+
+  const client = __getLastWsClient();
+  expect(client?.sentControls).toContainEqual({ type: "summary.request" });
+  expect(screen.getByTestId("summary-status").textContent).toBe("loading");
 });
 
 test("maintains max 4 confirmed subtitles (FIFO)", async () => {

@@ -49,9 +49,13 @@ export default function App() {
               displayBuffer={meeting.displayBuffer}
               transcripts={meeting.transcripts}
               orphanTranslations={meeting.orphanTranslations}
+              summary={meeting.summary}
+              summaryStatus={meeting.summaryStatus}
+              summaryError={meeting.summaryError}
               error={meeting.error}
               onReconnect={meeting.reconnect}
               onDismissError={meeting.dismissError}
+              onSummaryRequest={meeting.requestSummary}
             />
           </div>
           <aside className="min-h-0 lg:basis-1/4">

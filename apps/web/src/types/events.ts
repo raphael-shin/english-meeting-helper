@@ -76,6 +76,13 @@ export interface SuggestionsUpdateEvent extends BaseEvent {
   items: SuggestionItem[];
 }
 
+export interface SummaryUpdateEvent extends BaseEvent {
+  type: "summary.update";
+  sessionId: string;
+  summaryMarkdown: string | null;
+  error?: string | null;
+}
+
 export interface ErrorEvent extends BaseEvent {
   type: "error";
   code: string;
@@ -95,6 +102,7 @@ export type WebSocketEvent =
   | TranslationFinalEvent
   | TranslationCorrectedEvent
   | SuggestionsUpdateEvent
+  | SummaryUpdateEvent
   | ErrorEvent
   | ServerPongEvent;
 
@@ -119,8 +127,13 @@ export interface SuggestionsPromptMessage {
   prompt: string;
 }
 
+export interface SummaryRequestMessage {
+  type: "summary.request";
+}
+
 export type ClientControlMessage =
   | SessionStartMessage
   | SessionStopMessage
   | ClientPingMessage
-  | SuggestionsPromptMessage;
+  | SuggestionsPromptMessage
+  | SummaryRequestMessage;
