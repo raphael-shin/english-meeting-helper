@@ -69,13 +69,13 @@ export function MicSettingsPanel({
     <div className="relative">
       <button
         onClick={() => setIsOpen((open) => !open)}
-        className="rounded-full border px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+        className="rounded-full border border-white/70 bg-white/80 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-white"
         aria-label="Microphone settings"
       >
         Settings
       </button>
       {isOpen && (
-        <div className="absolute right-0 top-12 z-10 w-64 rounded-lg border bg-white p-3 shadow-lg">
+        <div className="absolute right-0 top-12 z-10 w-64 rounded-2xl border border-white/70 bg-white/95 p-3 shadow-xl backdrop-blur">
           <div className="space-y-2">
             <label className="text-xs font-semibold text-slate-600">
               Provider
@@ -85,7 +85,7 @@ export function MicSettingsPanel({
               onChange={(event) =>
                 onProviderModeChange(event.target.value as ProviderMode)
               }
-              className="w-full rounded border px-2 py-1 text-sm"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200"
             >
               <option value="AWS">AWS</option>
               <option value="OPENAI">OpenAI</option>
@@ -96,7 +96,7 @@ export function MicSettingsPanel({
             <select
               value={selectedDeviceId}
               onChange={(event) => setSelectedDeviceId(event.target.value)}
-              className="w-full rounded border px-2 py-1 text-sm"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200"
             >
               {devices.length === 0 ? (
                 <option value="">No devices</option>
@@ -111,7 +111,7 @@ export function MicSettingsPanel({
             <button
               onClick={handleTest}
               disabled={isTesting}
-              className="w-full rounded border px-2 py-1 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed"
             >
               {isTesting ? "Testing..." : "Test microphone"}
             </button>

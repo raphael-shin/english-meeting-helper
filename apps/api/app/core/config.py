@@ -21,9 +21,9 @@ class Settings(BaseSettings):
         "apac.anthropic.claude-haiku-4-5-20251001-v1:0",
         validation_alias="BEDROCK_QUICK_TRANSLATE_MODEL_ID",
     )
-    bedrock_translation_history_model_id: str = Field(
-        "",
-        validation_alias="BEDROCK_TRANSLATION_HISTORY_MODEL_ID",
+    bedrock_translation_high_model_id: str = Field(
+        "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+        validation_alias="BEDROCK_TRANSLATION_HIGH_MODEL_ID",
     )
     bedrock_correction_model_id: str = Field(
         "apac.anthropic.claude-haiku-4-5-20251001-v1:0",

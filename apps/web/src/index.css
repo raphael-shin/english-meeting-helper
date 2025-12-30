@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Google+Sans:opsz,wght@18..144,400;18..144,500;18..144,600;18..144,700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -6,11 +6,25 @@
 
 :root {
   color-scheme: light;
+  --ink: #0b1220;
+  --muted: #5b6b85;
+  --panel: rgba(255, 255, 255, 0.86);
+  --panel-strong: #ffffff;
+  --accent: #2563eb;
+  --accent-strong: #1d4ed8;
+  --accent-warm: #f97316;
+  --live: #10b981;
+  --shadow: 0 30px 80px rgba(15, 23, 42, 0.15);
 }
 
 body {
   margin: 0;
-  font-family: "Space Grotesk", sans-serif;
+  font-family: "Google Sans", "Space Grotesk", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(900px 520px at 12% -10%, rgba(125, 211, 252, 0.35), transparent 60%),
+    radial-gradient(800px 520px at 100% 0%, rgba(251, 191, 36, 0.25), transparent 55%),
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 45%, #e2e8f0 100%);
 }
 
 .mic-meter {

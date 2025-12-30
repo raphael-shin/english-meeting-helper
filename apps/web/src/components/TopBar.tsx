@@ -19,6 +19,17 @@ export function TopBar({
   providerMode,
   onProviderModeChange,
 }: TopBarProps) {
+  const statusLabel = isRecording
+    ? isConnected
+      ? "Live"
+      : "Reconnecting"
+    : "Ready";
+  const statusTone = isRecording
+    ? isConnected
+      ? "bg-emerald-500"
+      : "bg-amber-500"
+    : "bg-slate-400";
+
   const micBars = Array.from({ length: 14 }, (_, index) => (
     <span
       key={`mic-bar-${index}`}
@@ -31,36 +42,36 @@ export function TopBar({
   ));
 
   return (
-    <header className="flex items-center justify-between rounded-full border bg-white px-4 py-2 shadow-sm">
+    <header className="flex flex-wrap items-center justify-between gap-4 rounded-[28px] border border-white/60 bg-white/80 px-5 py-3 shadow-[var(--shadow)] backdrop-blur">
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-full bg-slate-100" aria-hidden />
-          <span className="text-base font-semibold">Notes</span>
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white shadow-sm">
+          <span className="text-base font-semibold">N</span>
+        </div>
+        <div>
+          <span className="block text-lg font-semibold tracking-tight">
+            Notes
+          </span>
+          <span className="block text-xs text-slate-500">
+            English Meeting Helper
+          </span>
         </div>
       </div>
-      <div className="flex items-center gap-3">
-        {isRecording && (
-          <div className="flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
-            <span
-              className={`h-2.5 w-2.5 rounded-full ${
-                isConnected ? "bg-emerald-500" : "bg-amber-500"
-              } animate-pulse`}
-              aria-hidden
-            />
-            <span className="sr-only">
-              {isConnected ? "Transcribing" : "Reconnecting"}
-            </span>
-            <span className="hidden sm:inline">
-              {isConnected ? "Transcript" : "Reconnecting..."}
-            </span>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 rounded-full bg-slate-900/5 px-3 py-1.5 text-xs font-semibold text-slate-700">
+          <span
+            className={`h-2.5 w-2.5 rounded-full ${statusTone}`}
+            aria-hidden
+          />
+          <span>{statusLabel}</span>
+          {isRecording && (
             <div
               className={`mic-meter ${isConnected ? "" : "mic-meter--idle"}`}
               aria-hidden
             >
               {micBars}
             </div>
-          </div>
-        )}
+          )}
+        </div>
         <MicSettingsPanel
           providerMode={providerMode}
           onProviderModeChange={onProviderModeChange}

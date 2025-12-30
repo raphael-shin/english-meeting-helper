@@ -14,16 +14,16 @@ export function TranscribeControls({
       {isRecording ? (
         <button
           onClick={onStop}
-          className="flex items-center gap-2 rounded-full bg-red-100 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-200"
+          className="flex items-center gap-2 rounded-full bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-red-500/20 hover:bg-red-600"
           aria-label="Stop transcribing"
         >
-          <span className="h-3 w-3 rounded bg-red-500" aria-hidden />
+          <span className="h-3 w-3 rounded bg-red-100" aria-hidden />
           Stop
         </button>
       ) : (
         <button
           onClick={onStart}
-          className="rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          className="rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/30 transition hover:bg-[var(--accent-strong)]"
           aria-label="Start transcribing"
         >
           Start transcribing

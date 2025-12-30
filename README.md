@@ -100,7 +100,7 @@ npm run build:web
 - `AWS_PROFILE` (optional)
 - `TRANSCRIBE_LANGUAGE_CODE` (default: en-US)
 - `BEDROCK_TRANSLATION_MODEL_ID` (default: apac.anthropic.claude-haiku-4-5-20251001-v1:0)
-- `BEDROCK_TRANSLATION_HISTORY_MODEL_ID` (optional)
+- `BEDROCK_TRANSLATION_HIGH_MODEL_ID` (default: global.anthropic.claude-haiku-4-5-20251001-v1:0)
 - `BEDROCK_QUICK_TRANSLATE_MODEL_ID` (default: apac.anthropic.claude-haiku-4-5-20251001-v1:0)
 - `BEDROCK_CORRECTION_MODEL_ID` (default: apac.anthropic.claude-haiku-4-5-20251001-v1:0)
 - `OPENAI_API_KEY` (OPENAI 모드 필수)

@@ -25,8 +25,10 @@ export default function App() {
   }, [providerMode]);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-100 text-slate-900">
-      <main className="mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col gap-4 p-4 md:p-6">
+    <div className="relative flex min-h-screen flex-col overflow-hidden text-[var(--ink)]">
+      <div className="pointer-events-none absolute -top-24 right-[-10%] h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.35),transparent_70%)] blur-2xl" />
+      <div className="pointer-events-none absolute bottom-[-18%] left-[-12%] h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle_at_center,rgba(14,165,233,0.3),transparent_70%)] blur-2xl" />
+      <main className="relative mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col gap-5 p-4 md:p-6">
         <TopBar
           isRecording={meeting.isRecording}
           isConnected={meeting.isConnected}
