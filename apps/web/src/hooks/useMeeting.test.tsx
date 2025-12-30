@@ -476,3 +476,73 @@ test("maintains max 4 confirmed subtitles (FIFO)", async () => {
     expect(display.confirmed[3].text).toBe("Fourth");
   });
 });
+
+test("progressive translation update for partial (Composing) text", async () => {
+  render(<TestHarness />);
+  const button = screen.getByRole("button", { name: "start" });
+
+  await act(async () => {
+    fireEvent.click(button);
+  });
+
+  const client = __getLastWsClient();
+  expect(client).not.toBeNull();
+
+  // First display.update with English only (no translation yet)
+  await act(async () => {
+    client?.emit?.({
+      type: "display.update",
+      ts: Date.now(),
+      sessionId: "sess_1",
+      confirmed: [],
+      current: {
+        id: "seg_1",
+        text: "Hello world",
+        speaker: "spk_1",
+        startTime: Date.now(),
+        endTime: null,
+        isFinal: false,
+        llmCorrected: false,
+        segmentId: 1,
+        translation: null,
+      },
+    });
+  });
+
+  await waitFor(() => {
+    const payload = screen.getByTestId("display").textContent ?? "{}";
+    const display = JSON.parse(payload);
+    expect(display.current).not.toBeNull();
+    expect(display.current.text).toBe("Hello world");
+    expect(display.current.translation).toBeNull();
+  });
+
+  // Second display.update with translation added (async translation completed)
+  await act(async () => {
+    client?.emit?.({
+      type: "display.update",
+      ts: Date.now(),
+      sessionId: "sess_1",
+      confirmed: [],
+      current: {
+        id: "seg_1",
+        text: "Hello world",
+        speaker: "spk_1",
+        startTime: Date.now(),
+        endTime: null,
+        isFinal: false,
+        llmCorrected: false,
+        segmentId: 1,
+        translation: "안녕하세요",
+      },
+    });
+  });
+
+  await waitFor(() => {
+    const payload = screen.getByTestId("display").textContent ?? "{}";
+    const display = JSON.parse(payload);
+    expect(display.current).not.toBeNull();
+    expect(display.current.text).toBe("Hello world");
+    expect(display.current.translation).toBe("안녕하세요");
+  });
+});

@@ -9,6 +9,7 @@ import { ErrorBanner } from "./ErrorBanner";
 import { SubtitleItem } from "./SubtitleItem";
 import { TranscriptItem } from "./TranscriptItem";
 import { TranslationItem } from "./TranslationItem";
+import { formatTime } from "../lib/time";
 
 interface MeetingPanelProps {
   isRecording: boolean;
@@ -35,6 +36,8 @@ export function MeetingPanel({
   onDismissError,
 }: MeetingPanelProps) {
   const [activeTab, setActiveTab] = useState<"live" | "history">("live");
+  const [historyView, setHistoryView] = useState<"both" | "ko" | "en">("both");
+  const [historyCopied, setHistoryCopied] = useState(false);
   const liveScrollRef = useRef<HTMLDivElement>(null);
   const historyScrollRef = useRef<HTMLDivElement>(null);
   const historyTimeline = [...transcripts, ...orphanTranslations].sort((left, right) => {
@@ -60,6 +63,40 @@ export function MeetingPanel({
     }
     historyScrollRef.current.scrollTo({ top: 0 });
   }, [historyTimeline.length]);
+
+  const handleCopyHistory = async () => {
+    const lines: string[] = [];
+    for (const entry of [...historyTimeline].reverse()) {
+      const timestamp =
+        entry.kind === "transcript"
+          ? formatTime(entry.ts)
+          : formatTime(entry.sourceTs || entry.ts);
+      if (entry.kind === "transcript") {
+        if (historyView !== "ko") {
+          lines.push(`[${timestamp}] ${entry.text}`);
+        }
+        if (historyView !== "en") {
+          for (const translation of entry.translations) {
+            lines.push(`[${timestamp}] ${translation.translatedText}`);
+          }
+        }
+      } else {
+        if (historyView !== "ko") {
+          lines.push(`[${timestamp}] ${entry.sourceText}`);
+        }
+        if (historyView !== "en") {
+          lines.push(`[${timestamp}] ${entry.translatedText}`);
+        }
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      setHistoryCopied(true);
+      window.setTimeout(() => setHistoryCopied(false), 1500);
+    } catch (error) {
+      console.error("Failed to copy history:", error);
+    }
+  };
 
   return (
     <section
@@ -250,6 +287,50 @@ export function MeetingPanel({
               Final transcripts
             </span>
           </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2">
+            <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setHistoryView("both")}
+                className={`rounded-full px-3 py-1 ${
+                  historyView === "both"
+                    ? "bg-slate-900 text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Both
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryView("ko")}
+                className={`rounded-full px-3 py-1 ${
+                  historyView === "ko"
+                    ? "bg-slate-900 text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Korean
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryView("en")}
+                className={`rounded-full px-3 py-1 ${
+                  historyView === "en"
+                    ? "bg-slate-900 text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                English
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyHistory}
+              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
+            >
+              {historyCopied ? "Copied" : "Copy all"}
+            </button>
+          </div>
           <div
             ref={historyScrollRef}
             className="flex-1 space-y-3 overflow-y-auto p-3"
@@ -266,9 +347,18 @@ export function MeetingPanel({
             ) : (
               historyTimeline.map((entry) =>
                 entry.kind === "transcript" ? (
-                  <TranscriptItem key={entry.id} transcript={entry} tone="history" />
+                  <TranscriptItem
+                    key={entry.id}
+                    transcript={entry}
+                    tone="history"
+                    viewMode={historyView}
+                  />
                 ) : (
-                  <TranslationItem key={entry.id} translation={entry} />
+                  <TranslationItem
+                    key={entry.id}
+                    translation={entry}
+                    viewMode={historyView}
+                  />
                 )
               )
             )}

@@ -61,8 +61,20 @@ cd infra/cdk && cdk deploy
 
 **Translation Models:**
 - `BEDROCK_TRANSLATION_FAST_MODEL_ID` (default: apac.anthropic.claude-haiku-4-5-20251001-v1:0)
+- `BEDROCK_TRANSLATION_HIGH_MODEL_ID` (default: global.anthropic.claude-haiku-4-5-20251001-v1:0)
 - `BEDROCK_QUICK_TRANSLATE_MODEL_ID` (default: apac.anthropic.claude-haiku-4-5-20251001-v1:0)
 - `BEDROCK_CORRECTION_MODEL_ID` (default: apac.anthropic.claude-haiku-4-5-20251001-v1:0)
+
+**OpenAI Configuration:**
+- `OPENAI_API_KEY` (required for OPENAI mode)
+- `OPENAI_STT_MODEL` (default: gpt-4o-transcribe)
+- `OPENAI_TRANSLATION_MODEL` (default: gpt-4o-mini)
+- `OPENAI_STT_LANGUAGE` (optional override)
+- `OPENAI_COMMIT_INTERVAL_MS` (default: 1000)
+
+**Google Configuration (Reserved):**
+- `GOOGLE_PROJECT_ID`
+- `GOOGLE_APPLICATION_CREDENTIALS`
 
 **LLM Correction (Optional):**
 - `LLM_CORRECTION_ENABLED` (default: false)

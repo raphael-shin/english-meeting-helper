@@ -75,7 +75,7 @@ export function SubtitleItem({ segment, variant }: SubtitleItemProps) {
             )}
           </p>
           {segment.translation && (
-            <p className="text-xs leading-relaxed text-gray-300">
+            <p className="mt-2 rounded-lg border border-emerald-400/30 bg-emerald-400/15 px-3 py-2 text-sm font-semibold leading-relaxed text-emerald-50 shadow-sm md:text-base">
               {renderTextWithHighlights(segment.translation)}
             </p>
           )}

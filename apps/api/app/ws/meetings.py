@@ -158,12 +158,12 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
             if exc:
                 logger.exception("Background task failed", exc_info=exc)
 
-    async def translate_partial_text(
+    async def translate_partial_for_display(
         source_text: str,
-        ts: int,
-        speaker: str,
         segment_id: int,
+        speaker: str,
     ) -> None:
+        """Translate partial text for Composing area (async, non-blocking)."""
         if is_closing:
             return
         async with translation_semaphore:
@@ -171,36 +171,22 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
             try:
                 translated = await translation_service.translate_en_to_ko(source_text)
             except Exception:
-                logger.exception("Translation failed")
-                await send_event(
-                    ErrorEvent(code="BEDROCK_ERROR", message="Translation failed")
-                )
+                logger.exception("Partial display translation failed")
                 return
-            if not session.is_partial_translation_current(
-                speaker,
-                ts,
-                source_text,
-                segment_id,
-            ):
-                return
-            log_event(
-                logger,
-                "translation.final",
-                session_id=session_id,
-                segment_id=segment_id,
-                text_len=len(source_text),
-                latency_ms=int((time.perf_counter() - started) * 1000),
-            )
-            await send_event(
-                TranslationFinalEvent(
+            
+            # Update display buffer with translation
+            display_buffer = session.get_display_buffer()
+            if display_buffer.current and display_buffer.current.segment_id == segment_id:
+                display_buffer.current.translation = translated
+                await send_display_update()
+                log_event(
+                    logger,
+                    "translation.partial_display",
                     session_id=session_id,
-                    source_ts=ts,
                     segment_id=segment_id,
-                    speaker=speaker,
-                    source_text=source_text,
-                    translated_text=translated,
+                    text_len=len(source_text),
+                    latency_ms=int((time.perf_counter() - started) * 1000),
                 )
-            )
 
     async def translate_final_text(
         source_text: str,
@@ -365,6 +351,18 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
                         )
                         session.update_display_buffer(segment)
                         await send_display_update()
+                        
+                        # Start async translation for Composing area
+                        track_task(
+                            asyncio.create_task(
+                                translate_partial_for_display(
+                                    partial_emit.caption_text,
+                                    partial_emit.segment_id,
+                                    speaker,
+                                )
+                            )
+                        )
+                        
                         log_event(
                             logger,
                             "stt.partial",
