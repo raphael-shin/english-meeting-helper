@@ -4,18 +4,24 @@ import { ProviderMode } from "../types/provider";
 
 interface TopBarProps {
   isRecording: boolean;
+  isPaused: boolean;
   isConnected: boolean;
   onStart: () => void;
-  onStop: () => void;
+  onPause: () => void;
+  onResume: () => void;
+  onEnd: () => void;
   providerMode: ProviderMode;
   onProviderModeChange: (mode: ProviderMode) => void;
 }
 
 export function TopBar({
   isRecording,
+  isPaused,
   isConnected,
   onStart,
-  onStop,
+  onPause,
+  onResume,
+  onEnd,
   providerMode,
   onProviderModeChange,
 }: TopBarProps) {
@@ -23,12 +29,16 @@ export function TopBar({
     ? isConnected
       ? "Live"
       : "Reconnecting"
-    : "Ready";
+    : isPaused
+      ? "Paused"
+      : "Ready";
   const statusTone = isRecording
     ? isConnected
       ? "bg-emerald-500"
       : "bg-amber-500"
-    : "bg-slate-400";
+    : isPaused
+      ? "bg-orange-400"
+      : "bg-slate-400";
 
   const micBars = Array.from({ length: 14 }, (_, index) => (
     <span
@@ -63,9 +73,11 @@ export function TopBar({
             aria-hidden
           />
           <span>{statusLabel}</span>
-          {isRecording && (
+          {(isRecording || isPaused) && (
             <div
-              className={`mic-meter ${isConnected ? "" : "mic-meter--idle"}`}
+              className={`mic-meter ${
+                isConnected && isRecording ? "" : "mic-meter--idle"
+              }`}
               aria-hidden
             >
               {micBars}
@@ -78,8 +90,11 @@ export function TopBar({
         />
         <TranscribeControls
           isRecording={isRecording}
+          isPaused={isPaused}
           onStart={onStart}
-          onStop={onStop}
+          onPause={onPause}
+          onResume={onResume}
+          onEnd={onEnd}
         />
       </div>
     </header>

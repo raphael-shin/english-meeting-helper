@@ -31,9 +31,12 @@ export default function App() {
       <main className="relative mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col gap-5 p-4 md:p-6">
         <TopBar
           isRecording={meeting.isRecording}
+          isPaused={meeting.isPaused}
           isConnected={meeting.isConnected}
           onStart={meeting.startMeeting}
-          onStop={meeting.stopMeeting}
+          onPause={meeting.pauseMeeting}
+          onResume={meeting.resumeMeeting}
+          onEnd={meeting.endSession}
           providerMode={providerMode}
           onProviderModeChange={setProviderMode}
         />
@@ -41,6 +44,7 @@ export default function App() {
         <section className="flex-[3] min-h-0">
           <MeetingPanel
             isRecording={meeting.isRecording}
+            isPaused={meeting.isPaused}
             displayBuffer={meeting.displayBuffer}
             transcripts={meeting.transcripts}
             orphanTranslations={meeting.orphanTranslations}

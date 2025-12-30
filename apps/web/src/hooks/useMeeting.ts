@@ -45,6 +45,7 @@ export interface OrphanTranslationEntry extends TranslationEntry {
 export interface MeetingState {
   isConnected: boolean;
   isRecording: boolean;
+  isPaused: boolean;
   sessionId: string | null;
   liveTranscripts: TranscriptEntry[];
   transcripts: TranscriptEntry[];
@@ -73,6 +74,7 @@ export function useMeeting(
   const [state, setState] = useState<MeetingState>({
     isConnected: false,
     isRecording: false,
+    isPaused: false,
     sessionId: null,
     liveTranscripts: [],
     transcripts: [],
@@ -374,6 +376,7 @@ export function useMeeting(
             retryable: true,
           },
           isRecording: false,
+          isPaused: false,
         }));
       }
     );
@@ -398,6 +401,7 @@ export function useMeeting(
       ...current,
       sessionId,
       isRecording: true,
+      isPaused: false,
       liveTranscripts: [],
       transcripts: [],
       orphanTranslations: [],
@@ -407,13 +411,43 @@ export function useMeeting(
     }));
   }, [handleEvent, providerMode, wsBaseUrl]);
 
-  const stopMeeting = useCallback(() => {
+  const pauseMeeting = useCallback(() => {
+    audioCaptureRef.current?.stop();
+    setState((current) => ({
+      ...current,
+      isRecording: false,
+      isPaused: true,
+    }));
+  }, []);
+
+  const resumeMeeting = useCallback(async () => {
+    if (!state.sessionId || !wsClientRef.current) {
+      await startMeeting();
+      return;
+    }
+    const sampleRate = PROVIDER_SAMPLE_RATES[providerMode];
+    audioCaptureRef.current?.stop();
+    audioCaptureRef.current = new AudioCapture();
+    await audioCaptureRef.current.start(
+      { sampleRate, chunkIntervalMs: 100 },
+      (chunk) => wsClientRef.current?.sendAudio(chunk)
+    );
+    setState((current) => ({
+      ...current,
+      isRecording: true,
+      isPaused: false,
+      error: null,
+    }));
+  }, [providerMode, startMeeting, state.sessionId]);
+
+  const endSession = useCallback(() => {
     wsClientRef.current?.sendControl({ type: "session.stop" });
     audioCaptureRef.current?.stop();
     wsClientRef.current?.disconnect();
     setState((current) => ({
       ...current,
       isRecording: false,
+      isPaused: false,
       sessionId: null,
       liveTranscripts: [],
       displayBuffer: { confirmed: [], current: null },
@@ -442,6 +476,7 @@ export function useMeeting(
       ...current,
       sessionId,
       isRecording: true,
+      isPaused: false,
       liveTranscripts: [],
       error: null,
       displayBuffer: { confirmed: [], current: null },
@@ -559,7 +594,9 @@ export function useMeeting(
   return {
     ...state,
     startMeeting,
-    stopMeeting,
+    pauseMeeting,
+    resumeMeeting,
+    endSession,
     reconnect,
     dismissError,
     sendSuggestionsPrompt,

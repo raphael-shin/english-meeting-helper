@@ -12,6 +12,7 @@ import { TranslationItem } from "./TranslationItem";
 
 interface MeetingPanelProps {
   isRecording: boolean;
+  isPaused: boolean;
   displayBuffer: {
     confirmed: SubtitleSegment[];
     current: SubtitleSegment | null;
@@ -25,6 +26,7 @@ interface MeetingPanelProps {
 
 export function MeetingPanel({
   isRecording,
+  isPaused,
   displayBuffer,
   transcripts,
   orphanTranslations,
@@ -61,13 +63,16 @@ export function MeetingPanel({
 
   return (
     <section
-      className="flex h-full min-h-0 flex-col rounded-lg border bg-white"
+      className="flex h-full min-h-0 flex-col rounded-3xl border border-white/60 bg-white/80 shadow-[var(--shadow)] backdrop-blur"
       aria-label="Meeting Panel"
     >
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
-        <h2 className="text-lg font-semibold">Transcript</h2>
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/70 px-4 py-3">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight">Transcript</h2>
+          <p className="text-xs text-slate-500">Live captions and session history</p>
+        </div>
         <div
-          className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold"
+          className="flex items-center rounded-full border border-white/70 bg-white/80 p-1 text-xs font-semibold uppercase tracking-wide"
           role="tablist"
           aria-label="Transcript tabs"
         >
@@ -118,11 +123,11 @@ export function MeetingPanel({
           role="tabpanel"
           aria-hidden={activeTab !== "live"}
           aria-labelledby="live-tab"
-          className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-900/10 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 shadow-sm ${
+          className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-900/20 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-slate-100 shadow-[0_30px_60px_rgba(15,23,42,0.45)] ${
             activeTab === "live" ? "" : "hidden"
           }`}
         >
-          <div className="flex items-center justify-between border-b border-white/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-200/80">
+          <div className="flex items-center justify-between border-b border-white/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-200/80">
             <span className="flex items-center gap-2">
               <span className="relative flex h-2.5 w-2.5">
                 <span
@@ -130,12 +135,16 @@ export function MeetingPanel({
                     isRecording ? "animate-ping opacity-75" : "opacity-0"
                   }`}
                 />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                <span
+                  className={`relative inline-flex h-2.5 w-2.5 rounded-full ${
+                    isPaused ? "bg-orange-300" : "bg-emerald-400"
+                  }`}
+                />
               </span>
-              <span>Live</span>
+              <span>{isPaused ? "Paused Feed" : "Live Feed"}</span>
             </span>
             <span className="text-[10px] font-medium normal-case tracking-normal text-emerald-100/60">
-              Real-time captions
+              {isPaused ? "Resume to continue" : "Real-time captions"}
             </span>
           </div>
           <div
@@ -146,11 +155,23 @@ export function MeetingPanel({
             aria-label="Live transcripts"
           >
             {displayBuffer.confirmed.length === 0 && !displayBuffer.current ? (
-              <p className="text-base text-emerald-100/70">
-                {isRecording
-                  ? "Listening for speech..."
-                  : "Click Start to begin recording"}
-              </p>
+              <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-emerald-100/80">
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/70">
+                  {isPaused ? "Paused" : "Ready for captions"}
+                </div>
+                <p className="text-base">
+                  {isRecording
+                    ? "Listening for speech..."
+                    : isPaused
+                      ? "Paused — resume to keep capturing captions."
+                      : "Press Start to begin capturing captions."}
+                </p>
+                <div className="space-y-2">
+                  <div className="h-2 w-2/3 rounded-full bg-emerald-300/20 animate-pulse-subtle" />
+                  <div className="h-2 w-1/2 rounded-full bg-emerald-300/20 animate-pulse-subtle" />
+                  <div className="h-2 w-3/4 rounded-full bg-emerald-300/20 animate-pulse-subtle" />
+                </div>
+              </div>
             ) : (
               <>
                 {displayBuffer.current && (
@@ -187,7 +208,7 @@ export function MeetingPanel({
           role="tabpanel"
           aria-hidden={activeTab !== "history"}
           aria-labelledby="history-tab"
-          className={`flex min-h-0 flex-1 flex-col rounded-lg border border-slate-100 bg-white ${
+          className={`flex min-h-0 flex-1 flex-col rounded-2xl border border-slate-100/80 bg-white/90 ${
             activeTab === "history" ? "" : "hidden"
           }`}
         >
