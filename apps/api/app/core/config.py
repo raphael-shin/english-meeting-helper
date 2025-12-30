@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     transcribe_language_code: str = Field("en-US", validation_alias="TRANSCRIBE_LANGUAGE_CODE")
     transcribe_sample_rate: int = 16000
     transcribe_media_encoding: str = "pcm"
-    bedrock_translation_model_id: str = Field(
-        "apac.anthropic.claude-haiku-4-5-20251001-v1:0", validation_alias="BEDROCK_TRANSLATION_MODEL_ID"
+    bedrock_translation_fast_model_id: str = Field(
+        "apac.anthropic.claude-haiku-4-5-20251001-v1:0", validation_alias="BEDROCK_TRANSLATION_FAST_MODEL_ID"
     )
     bedrock_quick_translate_model_id: str = Field(
         "apac.anthropic.claude-haiku-4-5-20251001-v1:0",

@@ -55,7 +55,7 @@ class SuggestionService:
             f"{chr(10).join(context_lines)}"
         )
 
-        response = await self.bedrock._invoke_model(self.settings.bedrock_translation_model_id, prompt)
+        response = await self.bedrock._invoke_model(self.settings.bedrock_translation_fast_model_id, prompt)
         return self._parse_suggestions(response)
 
     @staticmethod

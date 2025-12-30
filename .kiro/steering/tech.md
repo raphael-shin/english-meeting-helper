@@ -60,7 +60,7 @@ cd infra/cdk && cdk deploy
 - `PROVIDER_MODE` (AWS or OPENAI)
 
 **Translation Models:**
-- `BEDROCK_TRANSLATION_MODEL_ID` (default: apac.anthropic.claude-haiku-4-5-20251001-v1:0)
+- `BEDROCK_TRANSLATION_FAST_MODEL_ID` (default: apac.anthropic.claude-haiku-4-5-20251001-v1:0)
 - `BEDROCK_QUICK_TRANSLATE_MODEL_ID` (default: apac.anthropic.claude-haiku-4-5-20251001-v1:0)
 - `BEDROCK_CORRECTION_MODEL_ID` (default: apac.anthropic.claude-haiku-4-5-20251001-v1:0)
 

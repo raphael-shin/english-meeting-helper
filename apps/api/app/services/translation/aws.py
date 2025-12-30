@@ -20,7 +20,7 @@ class AWSTranslationService:
             f"\"{text}\"\n"
             "Return only the Korean translation. Do not ask questions or add explanations."
         )
-        response = await self._invoke_model(self.settings.bedrock_translation_model_id, prompt)
+        response = await self._invoke_model(self.settings.bedrock_translation_fast_model_id, prompt)
         return response.strip()
 
     async def translate_en_to_ko_history(
@@ -28,7 +28,7 @@ class AWSTranslationService:
         text: str,
         recent_context: list[str] | None = None,
     ) -> str:
-        model_id = self.settings.bedrock_translation_high_model_id or self.settings.bedrock_translation_model_id
+        model_id = self.settings.bedrock_translation_high_model_id or self.settings.bedrock_translation_fast_model_id
         prompt = self._build_history_prompt(text, recent_context)
         response = await self._invoke_model(model_id, prompt)
         return response.strip()
@@ -53,7 +53,7 @@ class AWSTranslationService:
         prompt_lines.append("Return only the Korean translation.")
         
         prompt = "\n".join(prompt_lines)
-        model_id = self.settings.bedrock_translation_high_model_id or self.settings.bedrock_translation_model_id
+        model_id = self.settings.bedrock_translation_high_model_id or self.settings.bedrock_translation_fast_model_id
         response = await self._invoke_model(model_id, prompt)
         return response.strip()
 

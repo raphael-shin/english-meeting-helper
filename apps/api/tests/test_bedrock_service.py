@@ -16,7 +16,7 @@ async def test_translate_en_to_ko_uses_translation_model(mock_client: AsyncMock)
     result = await service.translate_en_to_ko("Hello")
 
     service._invoke_model.assert_awaited_once()
-    assert service._invoke_model.call_args.args[0] == settings.bedrock_translation_model_id
+    assert service._invoke_model.call_args.args[0] == settings.bedrock_translation_fast_model_id
     assert "Translate the following English text" in service._invoke_model.call_args.args[1]
     assert result == "translated"
 
