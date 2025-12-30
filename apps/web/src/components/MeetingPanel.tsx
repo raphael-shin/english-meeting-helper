@@ -223,11 +223,12 @@ export function MeetingPanel({
                     />
                   </>
                 )}
-                {[...displayBuffer.confirmed].reverse().map((segment) => (
+                {[...displayBuffer.confirmed].reverse().map((segment, index) => (
                   <SubtitleItem
                     key={segment.id}
                     segment={segment}
                     variant="confirmed"
+                    isLatestConfirmed={index === 0}
                   />
                 ))}
               </>

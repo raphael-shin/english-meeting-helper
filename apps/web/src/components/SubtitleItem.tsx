@@ -15,7 +15,7 @@ export function SubtitleItem({ segment, variant }: SubtitleItemProps) {
     if (!isConfirmed) {
       return;
     }
-    const FADEOUT_SECONDS = 30;
+    const FADEOUT_SECONDS = 60;
     const elapsed = Date.now() - segment.startTime;
     const timeout = FADEOUT_SECONDS * 1000 - elapsed;
     if (timeout <= 0) {
@@ -27,6 +27,21 @@ export function SubtitleItem({ segment, variant }: SubtitleItemProps) {
     }, timeout);
     return () => window.clearTimeout(timer);
   }, [isConfirmed, segment.startTime]);
+
+  const renderTextWithHighlights = (text: string) => {
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        const word = part.slice(2, -2);
+        return (
+          <strong key={i} className="font-bold text-emerald-300">
+            {word}
+          </strong>
+        );
+      }
+      return part;
+    });
+  };
 
   return (
     <div
@@ -61,7 +76,7 @@ export function SubtitleItem({ segment, variant }: SubtitleItemProps) {
           </p>
           {segment.translation && (
             <p className="text-xs leading-relaxed text-gray-300">
-              {segment.translation}
+              {renderTextWithHighlights(segment.translation)}
             </p>
           )}
         </div>

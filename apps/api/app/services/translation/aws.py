@@ -43,6 +43,7 @@ class AWSTranslationService:
             "You are a real-time meeting translator. Translate English to natural Korean.",
             "Use the confirmed context below for coherence and consistency.",
             "Translate only the current sentence, maintaining flow with previous translations.",
+            "Identify key terms (technical terms, proper nouns, important concepts) and wrap them with **word**.",
             "Never ask questions or add explanations. Respond in Korean only.",
         ]
         if confirmed_texts:

@@ -5,6 +5,7 @@ import { SubtitleSegment } from "../types/events";
 
 const baseProps = {
   isRecording: false,
+  isPaused: false,
   displayBuffer: { confirmed: [], current: null },
   transcripts: [],
   orphanTranslations: [],
@@ -15,7 +16,7 @@ const baseProps = {
 
 test("shows empty state when not recording", () => {
   render(<MeetingPanel {...baseProps} />);
-  expect(screen.getByText(/Click Start to begin recording/i)).toBeInTheDocument();
+  expect(screen.getByText(/Press Start to begin capturing captions/i)).toBeInTheDocument();
 });
 
 test("shows listening state when recording", () => {

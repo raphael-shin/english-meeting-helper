@@ -43,8 +43,13 @@ class SuggestionService:
 
         prompt = (
             f"{prompt_prefix}"
-            "Based on the meeting context below, suggest 5 relevant follow-up questions in English "
-            "with Korean translations.\n"
+            "You are helping a non-native speaker participate in a meeting. "
+            "Suggest 5 short, natural English sentences they can say. Mix questions and answers.\n"
+            "Rules:\n"
+            "- Use simple, easy-to-edit phrases.\n"
+            "- Keep each sentence under 12 words.\n"
+            "- Avoid jargon and idioms.\n"
+            "- Make them sound polite and natural.\n"
             "Return a JSON array of objects with keys \"en\" and \"ko\" only.\n"
             "Context:\n"
             f"{chr(10).join(context_lines)}"
