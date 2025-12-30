@@ -296,13 +296,28 @@ export function useMeeting(
       console.log(`[COMPOSING] current=null (cleared)`);
     }
     
-    setState((current) => ({
-      ...current,
-      displayBuffer: {
-        confirmed: event.confirmed,
-        current: event.current,
-      },
-    }));
+    setState((current) => {
+      // Preserve previous translation if new one is null
+      const previousCurrent = current.displayBuffer.current;
+      const newCurrent = event.current
+        ? {
+            ...event.current,
+            translation:
+              event.current.translation ??
+              (previousCurrent?.segmentId === event.current.segmentId
+                ? previousCurrent.translation
+                : null),
+          }
+        : null;
+
+      return {
+        ...current,
+        displayBuffer: {
+          confirmed: event.confirmed,
+          current: newCurrent,
+        },
+      };
+    });
   };
 
   const handleEvent = useCallback((event: WebSocketEvent) => {

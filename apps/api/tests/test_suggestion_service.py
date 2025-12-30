@@ -14,11 +14,8 @@ async def test_suggestion_generation_threshold() -> None:
     bedrock = SimpleNamespace(_invoke_model=AsyncMock(return_value="[]"))
     service = SuggestionService(bedrock, Settings())
 
-    transcripts = [
-        TranscriptEntry(speaker="spk", ts=1, text="Hello."),
-        TranscriptEntry(speaker="spk", ts=2, text="Update."),
-    ]
-    result = await service.generate_suggestions(transcripts)
+    # Empty transcripts should return empty
+    result = await service.generate_suggestions([])
     assert result == []
     bedrock._invoke_model.assert_not_called()
 
@@ -29,7 +26,7 @@ async def test_suggestion_generation_threshold() -> None:
         ]
     )
     bedrock._invoke_model = AsyncMock(return_value=response)
-    transcripts.append(TranscriptEntry(speaker="spk", ts=3, text="More context."))
+    transcripts = [TranscriptEntry(speaker="spk", ts=1, text="Hello.")]
 
     result = await service.generate_suggestions(transcripts)
     assert 2 <= len(result) <= 5

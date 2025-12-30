@@ -481,7 +481,9 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
                     )
                     
                     # Update suggestions if needed
-                    if session.should_update_suggestions(False):
+                    should_update = session.should_update_suggestions(False)
+                    logger.info(f"[SUGGESTIONS] should_update={should_update} transcripts_count={len(session.transcripts)} since_last={session._since_last_suggestion}")
+                    if should_update:
                         track_task(
                             asyncio.create_task(
                                 generate_and_send_suggestions(

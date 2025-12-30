@@ -13,7 +13,7 @@ class SuggestionService:
     def __init__(self, bedrock_service: AWSTranslationService, settings: Settings) -> None:
         self.bedrock = bedrock_service
         self.settings = settings
-        self.min_transcripts_for_suggestion = 3
+        self.min_transcripts_for_suggestion = 1
 
     async def generate_suggestions(
         self,
@@ -24,7 +24,7 @@ class SuggestionService:
             return []
 
         context_lines = []
-        for entry in transcripts[-10:]:
+        for entry in transcripts[-5:]:
             if isinstance(entry, TranscriptEntry):
                 speaker = entry.speaker
                 text = entry.text
@@ -44,12 +44,13 @@ class SuggestionService:
         prompt = (
             f"{prompt_prefix}"
             "You are helping a non-native speaker participate in a meeting. "
-            "Suggest 5 short, natural English sentences they can say. Mix questions and answers.\n"
+            "Suggest 10 natural English sentences they can say. Mix questions and answers.\n"
             "Rules:\n"
-            "- Use simple, easy-to-edit phrases.\n"
-            "- Keep each sentence under 12 words.\n"
+            "- Use easy-to-edit phrases.\n"
+            "- Keep each sentence under 14 words.\n"
             "- Avoid jargon and idioms.\n"
             "- Make them sound polite and natural.\n"
+            "- Vary difficulty from beginner to lower-intermediate.\n"
             "Return a JSON array of objects with keys \"en\" and \"ko\" only.\n"
             "Context:\n"
             f"{chr(10).join(context_lines)}"

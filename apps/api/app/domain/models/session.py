@@ -223,14 +223,19 @@ class MeetingSession:
         self.suggestions_prompt = (prompt or "").strip()
 
     def should_update_suggestions(self, speaker_changed: bool) -> bool:
-        if len(self.transcripts) < 3:
+        if len(self.transcripts) < 1:
             return False
-        return self._since_last_suggestion >= 3
+        # First suggestion after 1 transcript, then every 2 transcripts
+        if self._since_last_suggestion == 0:
+            return False
+        if len(self.transcripts) == 1:
+            return True
+        return self._since_last_suggestion >= 2
 
     def mark_suggestions_updated(self) -> None:
         self._since_last_suggestion = 0
 
-    def recent_transcripts(self, limit: int = 10) -> list[TranscriptEntry]:
+    def recent_transcripts(self, limit: int = 5) -> list[TranscriptEntry]:
         return self.transcripts[-limit:]
 
     def recent_context(

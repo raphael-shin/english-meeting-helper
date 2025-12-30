@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { SuggestionItem } from "../types/events";
+import settingsIcon from "../assets/settings-btn.png";
 
 interface SuggestionsPanelProps {
   suggestions: SuggestionItem[];
@@ -19,7 +20,7 @@ export function SuggestionsPanel({
 }: SuggestionsPanelProps) {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const visibleSuggestions = suggestions.slice(0, 5);
+  const visibleSuggestions = suggestions.slice(0, 10);
 
   const handleCopy = async (index: number, text: string) => {
     await navigator.clipboard.writeText(text);
@@ -32,21 +33,17 @@ export function SuggestionsPanel({
       className="flex h-full min-h-0 flex-col rounded-3xl border border-white/70 bg-white/90 p-4 shadow-[var(--shadow)] backdrop-blur"
       aria-label="AI Suggestions"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">AI Suggestions</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Fresh prompts based on the latest transcript.
-          </p>
-        </div>
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold">AI Suggestions</h2>
         <button
           type="button"
           onClick={() => setShowSettings((current) => !current)}
-          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50"
           aria-expanded={showSettings}
           aria-controls="ai-suggestions-settings"
+          aria-label={showSettings ? "Close settings" : "Open settings"}
         >
-          {showSettings ? "Hide settings" : "Settings"}
+          <img src={settingsIcon} alt="" className="h-4 w-4" />
         </button>
       </div>
 
@@ -90,11 +87,7 @@ export function SuggestionsPanel({
         </div>
       )}
 
-      {visibleSuggestions.length === 0 ? (
-        <p className="mt-4 text-sm text-slate-500">
-          Suggestions will appear once the conversation gets going.
-        </p>
-      ) : (
+      {visibleSuggestions.length > 0 && (
         <ul className="mt-4 flex-1 space-y-3 overflow-y-auto pr-1" role="list">
           {visibleSuggestions.map((item, index) => (
             <li key={`${item.en}-${index}`} className="space-y-1">
@@ -108,14 +101,14 @@ export function SuggestionsPanel({
                 aria-label={`Copy suggestion: ${item.en}`}
               >
                 <p
-                  className={`text-sm font-semibold ${
+                  className={`text-xs font-semibold ${
                     index === 0 ? "text-white" : "text-slate-900"
                   }`}
                 >
                   {item.en}
                 </p>
                 <p
-                  className={`text-xs ${
+                  className={`text-[11px] ${
                     index === 0 ? "text-slate-200" : "text-slate-500"
                   }`}
                 >

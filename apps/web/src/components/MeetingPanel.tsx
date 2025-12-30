@@ -9,6 +9,7 @@ import { ErrorBanner } from "./ErrorBanner";
 import { SubtitleItem } from "./SubtitleItem";
 import { TranscriptItem } from "./TranscriptItem";
 import { TranslationItem } from "./TranslationItem";
+import copyIcon from "../assets/copy-btn.png";
 import { formatTime } from "../lib/time";
 
 interface MeetingPanelProps {
@@ -329,54 +330,26 @@ export function MeetingPanel({
               aria-label={historyCopied ? "Copied" : "Copy all transcripts"}
               className={`flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition ${
                 historyCopied
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-600"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  ? "border-emerald-200 bg-emerald-50"
+                  : "border-slate-200 bg-white hover:bg-slate-50"
               }`}
             >
-              {historyCopied ? (
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  aria-hidden
-                >
-                  <path
-                    d="M5 12L10 17L19 8"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  aria-hidden
-                >
-                  <rect
-                    x="9"
-                    y="9"
-                    width="11"
-                    height="11"
-                    rx="2"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  />
-                  <rect
-                    x="4"
-                    y="4"
-                    width="11"
-                    height="11"
-                    rx="2"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  />
-                </svg>
-              )}
+              <span
+                aria-hidden
+                className={`h-4 w-4 ${
+                  historyCopied ? "bg-emerald-600" : "bg-slate-600"
+                }`}
+                style={{
+                  maskImage: `url(${copyIcon})`,
+                  maskRepeat: "no-repeat",
+                  maskPosition: "center",
+                  maskSize: "contain",
+                  WebkitMaskImage: `url(${copyIcon})`,
+                  WebkitMaskRepeat: "no-repeat",
+                  WebkitMaskPosition: "center",
+                  WebkitMaskSize: "contain",
+                }}
+              />
             </button>
           </div>
           <div
