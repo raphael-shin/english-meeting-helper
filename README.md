@@ -7,7 +7,6 @@ Real-time English meeting assistant for Korean speakers. Live transcription, EN�
 - Context-aware EN→KO translation + Quick Translate (KO→EN)
 - AI Suggestions panel with prompt control
 - Meeting Summary (Markdown: 5-line summary, key points, optional action items)
-- Optional LLM correction for finalized transcripts
 
 ## Screenshots
 *(Add screenshots of the Meeting Panel, Settings, and Summary view here)*
@@ -68,6 +67,24 @@ npm run test:cdk
 - AWS CLI configured with credentials
 - Node.js and Python 3.11+ installed
 - CDK bootstrapped in target region
+
+### CDK Context Configuration
+
+Before deploying, create `infra/cdk/cdk.context.json` with your Bedrock model settings:
+
+```bash
+cp infra/cdk/cdk.context.json.example infra/cdk/cdk.context.json
+```
+
+**Configuration options:**
+
+| Key | Description | Example |
+|-----|-------------|---------|
+| `bedrock.translationFastModelId` | Fast translation model (partial text) | `global.amazon.nova-lite-v1:0` |
+| `bedrock.translationHighModelId` | High-quality translation model (final text) | `global.anthropic.claude-sonnet-4-5-20250929-v1:0` |
+| `bedrock.quickTranslateModelId` | Quick Translate KO→EN model | `global.anthropic.claude-haiku-4-5-20251001-v1:0` |
+
+> **Note**: Use `global.*` prefix for cross-region inference. Available models depend on your AWS account's Bedrock access.
 
 ### Deploy to AWS
 
