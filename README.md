@@ -1,176 +1,136 @@
 # English Meeting Helper
 
-## Overview
-English Meeting Helper는 실시간 영어 회의를 지원하는 웹 애플리케이션입니다. Live/History 탭 전사 UI, 2문장 단위 캡션/번역, 빠른 한→영 번역, AI 질문 제안을 제공합니다.
+Real-time English meeting assistant for Korean speakers. Live transcription, EN→KO translation, Quick Translate (KO→EN), AI speaking suggestions, and on-demand meeting summary (Markdown).
 
 ## Key Features
-- Live/History 탭 기반 전사 UI (partial/final 표시, Live는 최근 확정 자막 일부 유지)
-- 영어 → 한국어 실시간 번역 (partial은 2문장 단위 캡션 기준)
-- Quick Translate (한국어 → 영어)
-- AI Suggestions (회의 맥락 + 사용자 프롬프트 기반)
-- LLM 기반 전사 교정(옵션)
-- 마이크 설정 및 전사 시작/중단 컨트롤
+- Live/History transcript UI with partial + final updates
+- Context-aware EN→KO translation + Quick Translate (KO→EN)
+- AI Suggestions panel with prompt control
+- Meeting Summary (Markdown: 5-line summary, key points, optional action items)
+- Optional LLM correction for finalized transcripts
 
-## Directory Map
-- `apps/web`: React + TypeScript + Vite + TailwindCSS
+## Screenshots
+*(Add screenshots of the Meeting Panel, Settings, and Summary view here)*
+
+## Monorepo Layout
+- `apps/web`: React + TypeScript + Vite + Tailwind
 - `apps/api`: FastAPI + WebSocket
-- `packages/contracts`: JSON Schema 기반 타입 생성
-- `infra/cdk`: AWS CDK v2 (Python)
-- `infra/docker`: Dockerfile (API)
-
-## Prerequisites
-- Node.js 20.x (`.nvmrc`)
-- npm@>=10
-- Python 3.11+
-- AWS 자격증명 (AWS 모드)
-- OpenAI API Key (OPENAI 모드)
+- `packages/contracts`: JSON Schema → TS/Python types
+- `infra/cdk`: AWS CDK (Python)
+- `infra/docker`: Dockerfiles
 
 ## Local Development
+### 0) Prerequisites
+- Node.js 18+
+- Python 3.11+
+
 ### 1) Dependencies
 ```bash
 npm install
-```
-
-Backend 의존성은 다음 중 하나로 설치합니다.
-
-Option A) venv + pip
-```bash
-python -m venv .venv
-source .venv/bin/activate
 pip install -r apps/api/requirements.txt
 ```
 
-Option B) Poetry
+### 2) Environment
 ```bash
-cd apps/api
-poetry install
-```
-
-### 1-1) Environment setup
-```bash
-# Backend
 cp apps/api/.env.example apps/api/.env
-
-# Frontend (optional)
-cp apps/web/.env.example apps/web/.env
+cp apps/web/.env.example apps/web/.env   # optional
 ```
 
-### 2) Run API
+### 3) Run
 ```bash
 npm run dev:api
-```
-
-Poetry를 사용하는 경우:
-```bash
-cd apps/api
-poetry run uvicorn app.main:app --reload
-```
-
-### 3) Run Web
-```bash
 npm run dev:web
 ```
 
-### 4) Docker Compose
+## Docker Compose
+Prerequisites:
+- `~/.aws/credentials` configured (or `AWS_PROFILE` set)
+- `apps/api/.env` created
 
-**Prerequisites:**
-Before running Docker Compose, ensure you have installed dependencies and created the backend environment file:
 ```bash
-# Install dependencies (required for the frontend volume mount)
-npm install
-
-# Create backend environment file
-cp apps/api/.env.example apps/api/.env
-```
-
-Run the following command from the **project root directory**:
-
-#### Option A: Using AWS Credentials File (Recommended)
-```bash
-# Ensure ~/.aws/credentials exists with your profile
-docker-compose up
-```
-
-Docker will mount your `~/.aws` directory (read-only) and use the credentials.
-
-#### Option B: Using Environment Variables
-```bash
-# Export temporary credentials
-export AWS_ACCESS_KEY_ID=your_access_key
-export AWS_SECRET_ACCESS_KEY=your_secret_key
-export AWS_SESSION_TOKEN=your_session_token  # if using temporary credentials
-
-docker-compose up
-```
-
-#### Option C: Using AWS Profile
-```bash
-# Use specific AWS profile
 AWS_PROFILE=your-profile docker-compose up
 ```
 
-**Note**: 
-- Backend runs on `http://localhost:8000`
-- Frontend runs on `http://localhost:5173`
-- AWS credentials are mounted read-only for security
-- `.env` file is automatically loaded from `apps/api/.env`
+Services:
+- API: `http://localhost:8000`
+- Web: `http://localhost:5173`
 
-## Local Testing / Build / Generate
+## Tests
 ```bash
-npm run test:api
 npm run test:web
+npm run test:api
 npm run test:cdk
-npm run contracts:generate
-npm run build:web
 ```
 
-## Configuration
-### Provider Mode
-- `PROVIDER_MODE=AWS|OPENAI` (default: AWS)
-- Google 모드는 아직 구현되어 있지 않습니다.
-- Frontend의 Provider 선택은 마이크 샘플레이트를 결정합니다. Backend의 `PROVIDER_MODE`와 일치하도록 맞추세요.
-  - AWS: 16kHz
-  - OPENAI: 24kHz
+## AWS Deployment
 
-### Environment Variables
-#### Backend (`apps/api/.env`)
-- `PROVIDER_MODE` (default: AWS)
-- `AWS_REGION` (default: ap-northeast-2)
-- `AWS_PROFILE` (optional)
-- `TRANSCRIBE_LANGUAGE_CODE` (default: en-US)
-- `BEDROCK_TRANSLATION_FAST_MODEL_ID` (default: apac.anthropic.claude-haiku-4-5-20251001-v1:0)
-- `BEDROCK_TRANSLATION_HIGH_MODEL_ID` (default: global.anthropic.claude-haiku-4-5-20251001-v1:0)
-- `BEDROCK_QUICK_TRANSLATE_MODEL_ID` (default: apac.anthropic.claude-haiku-4-5-20251001-v1:0)
-- `BEDROCK_CORRECTION_MODEL_ID` (default: apac.anthropic.claude-haiku-4-5-20251001-v1:0)
-- `OPENAI_API_KEY` (OPENAI 모드 필수)
-- `OPENAI_STT_MODEL` (default: gpt-4o-transcribe)
-- `OPENAI_TRANSLATION_MODEL` (default: gpt-4o-mini)
-- `OPENAI_STT_LANGUAGE` (optional override)
-- `OPENAI_COMMIT_INTERVAL_MS` (default: 1000)
-- `LLM_CORRECTION_ENABLED` (default: false)
-- `LLM_CORRECTION_BATCH_SIZE` (default: 5)
-- `LLM_CORRECTION_INTERVAL_SECONDS` (default: 5)
-- `GOOGLE_PROJECT_ID` (reserved)
-- `GOOGLE_APPLICATION_CREDENTIALS` (reserved)
-- `CORS_ORIGINS` (comma-separated, default: http://localhost:5173)
+### Prerequisites
+- AWS CLI configured with credentials
+- Node.js and Python 3.11+ installed
+- CDK bootstrapped in target region
 
-#### Frontend (`apps/web/.env`)
-- `VITE_API_BASE_URL` (default: http://localhost:8000)
-- `VITE_WS_BASE_URL` (default: ws://localhost:8000)
+### Deploy to AWS
 
-## Notes
-- API 엔드포인트는 `/api/v1` prefix를 사용합니다.
-- WebSocket은 `/ws/v1/meetings/{sessionId}`를 사용합니다.
-- 실시간 전사/번역은 AWS/OpenAI 자격증명이 필요합니다.
-- Live 자막은 partial TTL(기본 25초) 이후 제거되며, 확정 자막은 최신 일부만 Live에 유지됩니다.
-- Transcribe diarization은 비활성화되어 화자 라벨이 표시되지 않습니다.
+**Quick Deploy (Recommended)**
+```bash
+./deploy.sh
+```
 
-## AWS Deployment (CDK)
+**Manual Deploy**
+
+**1. Build Web Frontend**
+```bash
+cd apps/web
+npx vite build
+```
+
+**2. Deploy with CDK**
 ```bash
 cd infra/cdk
-cdk bootstrap
-cdk synth
-cdk deploy
+pip install -r requirements.txt
+TYPEGUARD_DISABLE=1 cdk deploy --all --require-approval=never
 ```
 
-자세한 내용은 `infra/README.md`를 참고하세요.
+> **Note**: `TYPEGUARD_DISABLE=1` is required due to a type checking issue in CDK's BucketDeployment with typeguard library.
+
+**3. Access Application**
+```bash
+# CloudFront URL will be in the output
+# Example: https://d1234567890.cloudfront.net
+```
+
+### Architecture
+```
+CloudFront (Single Distribution)
+├─ / → S3 (Web Frontend)
+├─ /api/* → ALB → Fargate (API)
+└─ /ws/* → ALB → Fargate (WebSocket)
+```
+
+**Resources:**
+- Fargate: 1 vCPU, 2 GB RAM
+- ALB: Public with CloudFront Prefix List restriction
+- S3: Static web hosting
+- CloudFront: Global CDN with custom domain support
+- Region: `ap-northeast-2` (Seoul)
+
+See `infra/README.md` for detailed deployment instructions.
+
+## Configuration (Quick)
+- Provider mode: `PROVIDER_MODE=AWS|OPENAI`
+- WebSocket: `/ws/v1/meetings/{sessionId}`
+- API: `/api/v1`
+
+See `apps/api/.env.example` for full backend settings and `apps/web/.env.example` for frontend.
+
+## Docs
+- Product/UX: `.kiro/steering/product.md`
+- Architecture: `.kiro/steering/structure.md`
+- Tech stack: `.kiro/steering/tech.md`
+- WebSocket protocol: `.kiro/steering/websocket-protocol.md`
+- Infra: `infra/README.md`
+
+## Troubleshooting
+- **Audio Issues**: Ensure your browser has permission to access the microphone.
+- **API Errors**: Check if `PROVIDER_MODE` and API keys (AWS/OpenAI) are correctly set in `.env`.
+- **WebSocket Disconnects**: Verify the `VITE_WS_BASE_URL` matches your backend URL.

@@ -21,6 +21,9 @@ venv/
 .mypy_cache/
 .hypothesis/
 
+# CDK
+cdk.context.json
+
 # OS
 .DS_Store
 

@@ -316,7 +316,7 @@ export function useMeeting(
               event.current.translation ??
               (previousCurrent?.segmentId === event.current.segmentId
                 ? previousCurrent.translation
-                : null),
+                : undefined),
           }
         : null;
 
@@ -394,7 +394,7 @@ export function useMeeting(
 
   const startMeeting = useCallback(async () => {
     const sessionId = crypto.randomUUID().toLowerCase();
-    const sampleRate = PROVIDER_SAMPLE_RATES[providerMode];
+    const sampleRate = PROVIDER_SAMPLE_RATES[providerMode] as 16000 | 24000;
 
     wsClientRef.current = new MeetingWsClient(
       wsBaseUrl,
@@ -465,7 +465,7 @@ export function useMeeting(
       await startMeeting();
       return;
     }
-    const sampleRate = PROVIDER_SAMPLE_RATES[providerMode];
+    const sampleRate = PROVIDER_SAMPLE_RATES[providerMode] as 16000 | 24000;
     audioCaptureRef.current?.stop();
     audioCaptureRef.current = new AudioCapture();
     await audioCaptureRef.current.start(
@@ -496,7 +496,7 @@ export function useMeeting(
 
   const reconnect = useCallback(async () => {
     const sessionId = crypto.randomUUID().toLowerCase();
-    const sampleRate = PROVIDER_SAMPLE_RATES[providerMode];
+    const sampleRate = PROVIDER_SAMPLE_RATES[providerMode] as 16000 | 24000;
     wsClientRef.current?.reconnect(sessionId, {
       type: "session.start",
       sampleRate,

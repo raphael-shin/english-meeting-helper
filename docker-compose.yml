@@ -3,28 +3,34 @@ services:
     build:
       context: .
       dockerfile: infra/docker/api.Dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64
     ports:
       - "8000:8000"
     volumes:
-      - ./apps/api:/app/app
-      - ~/.aws:/root/.aws:ro  # Mount AWS credentials (read-only)
+      - ./apps/api:/app
     environment:
       - ENV=development
-      - AWS_PROFILE=${AWS_PROFILE:-default}
       - AWS_REGION=${AWS_REGION:-ap-northeast-2}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
     env_file:
       - ./apps/api/.env
+
   web:
-    image: node:20
-    working_dir: /workspace
-    command: ["npm", "run", "dev", "-w", "apps/web", "--", "--host", "0.0.0.0", "--port", "5173"]
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64
     ports:
       - "5173:5173"
     volumes:
       - ./:/workspace
+      - /workspace/node_modules  # Use container's node_modules, not host's
     environment:
       - VITE_API_BASE_URL=http://localhost:8000
       - VITE_WS_BASE_URL=ws://localhost:8000

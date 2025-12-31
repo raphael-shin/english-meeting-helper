@@ -1,0 +1,51 @@
+# CDK
+infra/cdk/cdk.out
+infra/cdk/.venv
+infra/cdk/__pycache__
+infra/cdk/*.egg-info
+infra/cdk/cdk.context.json
+
+# Node
+node_modules
+apps/web/dist
+apps/web/node_modules
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+.venv
+venv
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Test
+.pytest_cache
+.coverage
+htmlcov
+
+# Environment
+.env
+.env.local

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
 
 import { MeetingPanel } from "./MeetingPanel";
@@ -132,4 +132,127 @@ test("renders summary card when ready", () => {
   expect(screen.getByText("요약 1")).toBeInTheDocument();
   expect(screen.getByText("핵심 1")).toBeInTheDocument();
   expect(screen.getByText("액션 1")).toBeInTheDocument();
+});
+
+test("shows summary button disabled when loading", () => {
+  render(
+    <MeetingPanel
+      {...baseProps}
+      transcripts={[
+        {
+          id: "final-1",
+          kind: "transcript",
+          speaker: "spk_1",
+          text: "Hello",
+          isFinal: true,
+          ts: 1,
+          segmentId: 1,
+          translations: [],
+        },
+      ]}
+      summaryStatus="loading"
+    />
+  );
+
+  fireEvent.click(screen.getByRole("tab", { name: "History" }));
+  const button = screen.getByRole("button", { name: "Generate meeting summary" }); // The accessible name might be simpler if it's just icon or text
+  // Wait, the button text changes to a spinner. The aria-label is "Generate meeting summary"
+  expect(button).toBeDisabled();
+});
+
+test("shows summary error message", () => {
+  render(
+    <MeetingPanel
+      {...baseProps}
+      transcripts={[
+        {
+          id: "final-1",
+          kind: "transcript",
+          speaker: "spk_1",
+          text: "Hello",
+          isFinal: true,
+          ts: 1,
+          segmentId: 1,
+          translations: [],
+        },
+      ]}
+      summary={{ markdown: "Old summary" }} // Show summary area
+      summaryStatus="error"
+      summaryError="Failed to generate summary"
+    />
+  );
+
+  fireEvent.click(screen.getByRole("tab", { name: "History" }));
+  expect(screen.getByText("Failed to generate summary")).toBeInTheDocument();
+});
+
+test("copy summary button copies to clipboard", async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.assign(navigator, {
+    clipboard: {
+      writeText,
+    },
+  });
+
+  render(
+    <MeetingPanel
+      {...baseProps}
+      transcripts={[
+        {
+          id: "final-1",
+          kind: "transcript",
+          speaker: "spk_1",
+          text: "Hello",
+          isFinal: true,
+          ts: 1,
+          segmentId: 1,
+          translations: [],
+        },
+      ]}
+      summary={{ markdown: "## Summary content" }}
+      summaryStatus="ready"
+    />
+  );
+
+  fireEvent.click(screen.getByRole("tab", { name: "History" }));
+  const copyButton = screen.getByRole("button", { name: "Copy summary" });
+  await act(async () => {
+    fireEvent.click(copyButton);
+  });
+
+  await waitFor(() => {
+    expect(writeText).toHaveBeenCalledWith("## Summary content");
+  });
+});
+
+test("renders markdown correctly (bold, code)", () => {
+  render(
+    <MeetingPanel
+      {...baseProps}
+      transcripts={[
+        {
+          id: "final-1",
+          kind: "transcript",
+          speaker: "spk_1",
+          text: "Hello",
+          isFinal: true,
+          ts: 1,
+          segmentId: 1,
+          translations: [],
+        },
+      ]}
+      summary={{ markdown: "This is **bold** and `code`." }}
+      summaryStatus="ready"
+    />
+  );
+
+  fireEvent.click(screen.getByRole("tab", { name: "History" }));
+  
+  // Check for bold (strong tag or check style/presence)
+  const boldElement = screen.getByText("bold");
+  expect(boldElement.tagName).toBe("STRONG");
+
+  // Check for code
+  const codeElement = screen.getByText("code");
+  expect(codeElement.tagName).toBe("CODE");
 });

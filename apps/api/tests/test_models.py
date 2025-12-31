@@ -8,6 +8,7 @@ from app.domain.models.events import (
     SessionStopEvent,
     SuggestionItem,
     SuggestionsUpdateEvent,
+    SummaryUpdateEvent,
     TranscriptCorrectedEvent,
     TranscriptFinalEvent,
     TranscriptPartialEvent,
@@ -136,6 +137,15 @@ def test_event_structure_suggestions() -> None:
     assert payload["sessionId"] == "sess"
     assert payload["items"][0]["en"] == "Question?"
     assert payload["items"][0]["ko"] == "질문?"
+
+
+def test_event_structure_summary() -> None:
+    markdown = "## 5줄 요약\n- 요약 1\n- 요약 2\n- 요약 3\n- 요약 4\n- 요약 5"
+    event = SummaryUpdateEvent(session_id="sess", summary_markdown=markdown)
+    payload = event.model_dump(by_alias=True)
+    assert payload["type"] == "summary.update"
+    assert payload["sessionId"] == "sess"
+    assert payload["summaryMarkdown"] == markdown
 
 
 @given(

@@ -105,10 +105,6 @@ class TestExtractPartialEmit:
         assert segment_id == 1
 
 
-class TestIsPartialTranslationCurrent:
-    """is_partial_translation_current() 상태 매칭 테스트"""
-
-
 class TestLongSentenceSplitting:
     """긴 문장 처리 테스트 (빠른 화자)"""
 
@@ -142,16 +138,6 @@ class TestLongSentenceSplitting:
         assert text == long_text
         assert segment_id is not None
 
-    def test_display_buffer_with_single_segment(self) -> None:
-        """긴 텍스트가 display buffer에 단일 segment로 추가되는지"""
-        session = MeetingSession("sess")
-        long_text = (
-            "First sentence here. "
-            "Second sentence here. "
-            "Third sentence here. "
-            "Fourth sentence here. "
-            "Fifth sentence here."
-        )
     def test_display_buffer_with_single_segment(self) -> None:
         """긴 텍스트가 display buffer에 단일 segment로 추가되는지"""
         session = MeetingSession("sess")

@@ -41,3 +41,23 @@ def test_process_batch_empty_queue() -> None:
     queue = CorrectionQueue(DummyBedrock(), batch_size=2)
     corrections = asyncio.run(queue.process_batch())
     assert corrections == []
+
+
+def test_process_batch_runs_correction() -> None:
+    class RecordingBedrock:
+        def __init__(self) -> None:
+            self.prompts: list[str] = []
+
+        async def invoke_correction(self, prompt: str) -> str:
+            self.prompts.append(prompt)
+            return '{"corrections": ["Hello world"]}'
+
+    bedrock = RecordingBedrock()
+    queue = CorrectionQueue(bedrock, batch_size=2)
+
+    asyncio.run(queue.enqueue(_segment(1, "Hello wrld")))
+    corrections = asyncio.run(queue.process_batch())
+
+    assert corrections == [(1, "Hello wrld", "Hello world")]
+    assert bedrock.prompts
+    assert "1. Hello wrld" in bedrock.prompts[0]

@@ -18,6 +18,10 @@ class AWSSTTService:
         self.settings = settings
         if TranscribeStreamingClient is None:
             raise RuntimeError("amazon-transcribe is required for AWSSTTService")
+        
+        # amazon-transcribe uses awscrt which needs explicit credentials
+        # It will automatically use AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN
+        # from environment variables
         self.client = TranscribeStreamingClient(region=settings.aws_region)
         self._stream = None
         self._results_queue: asyncio.Queue[TranscriptResult] = asyncio.Queue()

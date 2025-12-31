@@ -37,7 +37,7 @@ export class AudioCapture {
     this.processor.onaudioprocess = (event) => {
       const inputData = event.inputBuffer.getChannelData(0);
       const pcmData = this.float32ToPcm16(inputData);
-      this.onAudioChunk?.(pcmData.buffer);
+      this.onAudioChunk?.(pcmData.buffer as ArrayBuffer);
     };
 
     source.connect(this.processor);

@@ -52,6 +52,21 @@ npm run test:api   # pytest
 - **Shared Contracts**: JSON Schema → TypeScript/Python 타입 생성
 - **Providers**: AWS/OPENAI 지원 (GOOGLE는 미구현)
 
+## Development Workflow
+When adding a new feature or API:
+1. **Define Schema**: Add/Update JSON Schema in `packages/contracts/schema/`.
+2. **Generate Types**: Run `npm run contracts:generate` to update TS and Python types.
+3. **Backend Implementation**: Implement logic in `apps/api/app/services` and endpoints in `apps/api/app/api`.
+4. **Frontend Implementation**: Update UI in `apps/web` using the generated types.
+
+## Directory Responsibilities
+### Backend (`apps/api/app/`)
+- `api/`: Route handlers (Controllers). Validate input, call services.
+- `services/`: Business logic. Pure Python code, independent of HTTP.
+- `core/`: Configuration, logging, dependencies (DI).
+- `domain/`: Pydantic models, internal data structures.
+- `ws/`: WebSocket connection handlers.
+
 ## Testing
 
 ```bash
@@ -60,7 +75,7 @@ npm run test:api              # Backend (pytest)
 npm run test:cdk              # CDK 인프라 테스트
 ```
 
-- 외부 서비스는 mock/fake로 테스트
+- 외부 서비스는 mock/fake로 테스트 (Backend는 `pytest-mock` 활용 권장)
 - 코드 변경 시 관련 테스트 추가/수정
 
 ## Environment Setup

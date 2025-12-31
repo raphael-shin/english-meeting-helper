@@ -19,3 +19,17 @@ app.add_middleware(
 app.state.settings = settings
 app.include_router(api_router)
 app.include_router(ws_router)
+
+
+@app.get("/")
+async def root():
+    """Root endpoint - API info"""
+    return {
+        "service": "English Meeting Helper API",
+        "version": "1.0.0",
+        "endpoints": {
+            "health": "/api/v1/health",
+            "websocket": "/ws/v1/meetings/{sessionId}",
+            "quick_translate": "/api/v1/translate/quick",
+        },
+    }

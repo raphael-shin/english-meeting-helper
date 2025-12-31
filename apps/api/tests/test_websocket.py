@@ -71,6 +71,20 @@ def _set_app_state() -> None:
     app.state.summary_service = FakeSummaryService()
 
 
+def _receive_until(
+    websocket,
+    *,
+    skip_types: set[str] | None = None,
+    max_messages: int = 20,
+):
+    for _ in range(max_messages):
+        message = websocket.receive_json()
+        if skip_types and message.get("type") in skip_types:
+            continue
+        return message
+    raise AssertionError("Expected message was not received")
+
+
 def test_ws_emits_transcript_events(monkeypatch) -> None:
     async def transcript_stream() -> AsyncIterator[TranscriptResult]:
         yield TranscriptResult(
@@ -88,11 +102,7 @@ def test_ws_emits_transcript_events(monkeypatch) -> None:
         types = []
         for index in range(10):
             websocket.send_text(f'{{"type":"client.ping","ts":{index}}}')
-            message = websocket.receive_json()
-            if message.get("type") == "server.pong":
-                continue
-            if message.get("type") == "display.update":
-                continue
+            message = _receive_until(websocket, skip_types={"server.pong", "display.update"})
             types.append(message["type"])
             if "transcript.partial" in types and "transcript.final" in types:
                 break
@@ -112,11 +122,7 @@ def test_ws_emits_translation_after_final(monkeypatch) -> None:
         types = []
         for index in range(10):
             websocket.send_text(f'{{"type":"client.ping","ts":{index}}}')
-            message = websocket.receive_json()
-            if message.get("type") == "server.pong":
-                continue
-            if message.get("type") == "display.update":
-                continue
+            message = _receive_until(websocket, skip_types={"server.pong", "display.update"})
             types.append(message["type"])
             if "transcript.final" in types and "translation.final" in types:
                 break
@@ -165,15 +171,51 @@ def test_ws_summary_request_after_transcript(monkeypatch) -> None:
 
     client = TestClient(app)
     with client.websocket_connect("/ws/v1/meetings/test-session") as websocket:
-        message = websocket.receive_json()
-        while message.get("type") in {"server.pong", "display.update", "translation.final"}:
-            message = websocket.receive_json()
-
+        message = _receive_until(
+            websocket,
+            skip_types={"server.pong", "display.update", "translation.final"},
+        )
         assert message["type"] == "transcript.final"
 
         websocket.send_text('{"type":"summary.request"}')
-        response = websocket.receive_json()
-        while response.get("type") in {"translation.final", "display.update"}:
-            response = websocket.receive_json()
+        response = _receive_until(
+            websocket,
+            skip_types={"translation.final", "display.update"},
+        )
         assert response["type"] == "summary.update"
         assert response["summaryMarkdown"].startswith("## 5줄 요약")
+
+
+def test_ws_summary_request_error_handling(monkeypatch) -> None:
+    async def transcript_stream() -> AsyncIterator[TranscriptResult]:
+        yield TranscriptResult(is_partial=False, text="Hello world.", speaker="spk_1")
+
+    class ErrorSummaryService:
+        async def generate_summary(self, transcripts):  # type: ignore[no-untyped-def]
+            raise ValueError("Something went wrong")
+
+    _set_app_state()
+    # Override summary service with error one
+    app.state.summary_service = ErrorSummaryService()
+    
+    monkeypatch.setattr(meetings_module, "create_stt_service", lambda settings: make_stt_service(transcript_stream)(settings))
+
+    client = TestClient(app)
+    with client.websocket_connect("/ws/v1/meetings/test-session") as websocket:
+        _receive_until(
+            websocket,
+            skip_types={"server.pong", "display.update", "translation.final"},
+        )
+        
+        # Send summary request
+        websocket.send_text('{"type":"summary.request"}')
+        
+        # Expect error in summary.update
+        response = _receive_until(
+            websocket,
+            skip_types={"translation.final", "display.update"},
+        )
+            
+        assert response["type"] == "summary.update"
+        assert response["summaryMarkdown"] is None
+        assert "Failed to generate summary" in response["error"]

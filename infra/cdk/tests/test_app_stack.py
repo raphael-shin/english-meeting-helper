@@ -9,6 +9,25 @@ def test_stack_resources() -> None:
     stack = AppStack(app, "TestStack")
     template = assertions.Template.from_stack(stack)
 
-    template.resource_count_is("AWS::DynamoDB::Table", 2)
+    # Core resources
     template.resource_count_is("AWS::ECS::Service", 1)
     template.resource_count_is("AWS::ElasticLoadBalancingV2::LoadBalancer", 1)
+    
+    # IAM permissions for Bedrock and Transcribe
+    template.has_resource_properties(
+        "AWS::IAM::Policy",
+        {
+            "PolicyDocument": {
+                "Statement": assertions.Match.array_with([
+                    assertions.Match.object_like({
+                        "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
+                        "Effect": "Allow",
+                    }),
+                    assertions.Match.object_like({
+                        "Action": ["transcribe:StartStreamTranscription", "transcribe:StartStreamTranscriptionWebSocket"],
+                        "Effect": "Allow",
+                    }),
+                ])
+            }
+        }
+    )

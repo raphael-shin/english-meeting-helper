@@ -2,12 +2,17 @@ import { useEffect, useState } from "react";
 
 import { SubtitleSegment } from "../types/events";
 
-interface SubtitleItemProps {
+export interface SubtitleItemProps {
   segment: SubtitleSegment;
-  variant: "confirmed" | "current";
+  variant?: "current" | "confirmed";
+  isLatestConfirmed?: boolean;
 }
 
-export function SubtitleItem({ segment, variant }: SubtitleItemProps) {
+export function SubtitleItem({
+  segment,
+  variant = "confirmed",
+  isLatestConfirmed,
+}: SubtitleItemProps) {
   const isConfirmed = variant === "confirmed";
   const [opacity, setOpacity] = useState(1);
 
