@@ -19,6 +19,9 @@ class AppStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, target_region: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
+        # Read Bedrock model IDs from context
+        bedrock_config = self.node.try_get_context("bedrock") or {}
+
         # VPC with private subnets
         vpc = ec2.Vpc(self, "Vpc", max_azs=2, nat_gateways=1)
         cluster = ecs.Cluster(self, "Cluster", vpc=vpc)
@@ -64,10 +67,10 @@ class AppStack(Stack):
                     "AWS_REGION": target_region,
                     "PROVIDER_MODE": "AWS",
                     "TRANSCRIBE_LANGUAGE_CODE": "en-US",
-                    "BEDROCK_TRANSLATION_FAST_MODEL_ID": "global.amazon.nova-lite-v1:0",
-                    "BEDROCK_TRANSLATION_HIGH_MODEL_ID": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
-                    "BEDROCK_QUICK_TRANSLATE_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
-                    "BEDROCK_CORRECTION_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+                    "BEDROCK_TRANSLATION_FAST_MODEL_ID": bedrock_config.get("translationFastModelId", ""),
+                    "BEDROCK_TRANSLATION_HIGH_MODEL_ID": bedrock_config.get("translationHighModelId", ""),
+                    "BEDROCK_QUICK_TRANSLATE_MODEL_ID": bedrock_config.get("quickTranslateModelId", ""),
+                    "BEDROCK_CORRECTION_MODEL_ID": bedrock_config.get("correctionModelId", ""),
                 },
             ),
         )
