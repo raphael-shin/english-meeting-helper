@@ -26,22 +26,53 @@ export function MicSettingsPanel({
     if (!isOpen) {
       return;
     }
-    navigator.mediaDevices
-      .enumerateDevices()
-      .then((items) => {
-        const microphones = items
-          .filter((item) => item.kind === "audioinput")
-          .map((item) => ({
-            deviceId: item.deviceId,
-            label: item.label || "Microphone",
-          }));
-        setDevices(microphones);
-        if (!selectedDeviceId && microphones.length > 0) {
-          setSelectedDeviceId(microphones[0].deviceId);
+
+    const loadDevices = async () => {
+      try {
+        let items = await navigator.mediaDevices.enumerateDevices();
+        let microphones = items.filter((item) => item.kind === "audioinput");
+
+        // If no labels, we likely don't have permission yet.
+        // Try to ask for permission briefly.
+        const hasLabels = microphones.some((m) => m.label.length > 0);
+        if (microphones.length === 0 || !hasLabels) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+            });
+            // Stop immediately, we just wanted the permission
+            stream.getTracks().forEach((track) => track.stop());
+
+            // Re-enumerate after permission
+            items = await navigator.mediaDevices.enumerateDevices();
+            microphones = items.filter((item) => item.kind === "audioinput");
+          } catch (err) {
+            console.warn("Microphone permission denied", err);
+            setStatus("Permission denied");
+            return;
+          }
         }
-      })
-      .catch(() => setStatus("Unable to list microphones"));
-  }, [isOpen, selectedDeviceId]);
+
+        const options = microphones.map((item) => ({
+          deviceId: item.deviceId,
+          label: item.label || `Microphone ${item.deviceId.slice(0, 4)}...`,
+        }));
+
+        setDevices(options);
+
+        // Only set default if not already selected
+        if (!selectedDeviceId && options.length > 0) {
+          setSelectedDeviceId(options[0].deviceId);
+        }
+      } catch (error) {
+        console.error(error);
+        setStatus("Unable to list microphones");
+      }
+    };
+
+    loadDevices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const handleTest = async () => {
     if (!selectedDeviceId) {
