@@ -132,6 +132,8 @@ class AppStack(Stack):
                 ],
                 resources=[
                     f"arn:aws:bedrock:{target_region}::foundation-model/*",
+                    # Cross-region inference profiles (global.*, apac.*, etc.)
+                    f"arn:aws:bedrock:{target_region}:{self.account}:inference-profile/*",
                 ],
             )
         )
