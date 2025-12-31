@@ -81,19 +81,3 @@ async def test_translate_for_display_includes_confirmed_context(mock_client: Asy
     assert "- Second confirmed" in prompt
     assert "Current sentence" in prompt
     assert result == "display"
-
-
-@pytest.mark.asyncio
-@patch("app.services.translation.aws.boto3.client")
-async def test_invoke_correction_uses_correction_model(mock_client: AsyncMock) -> None:
-    settings = Settings()
-    settings.bedrock_correction_model_id = "correction-model"
-    service = AWSTranslationService(settings)
-    service._invoke_model = AsyncMock(return_value="fixed")
-
-    result = await service.invoke_correction("Fix this line.")
-
-    service._invoke_model.assert_awaited_once()
-    assert service._invoke_model.call_args.args[0] == "correction-model"
-    assert "Fix this line." in service._invoke_model.call_args.args[1]
-    assert result == "fixed"

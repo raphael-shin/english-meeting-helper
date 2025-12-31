@@ -70,7 +70,6 @@ class AppStack(Stack):
                     "BEDROCK_TRANSLATION_FAST_MODEL_ID": bedrock_config.get("translationFastModelId", ""),
                     "BEDROCK_TRANSLATION_HIGH_MODEL_ID": bedrock_config.get("translationHighModelId", ""),
                     "BEDROCK_QUICK_TRANSLATE_MODEL_ID": bedrock_config.get("quickTranslateModelId", ""),
-                    "BEDROCK_CORRECTION_MODEL_ID": bedrock_config.get("correctionModelId", ""),
                 },
             ),
         )
@@ -134,7 +133,7 @@ class AppStack(Stack):
                     "bedrock:InvokeModelWithResponseStream",
                 ],
                 resources=[
-                    f"arn:aws:bedrock:{target_region}::foundation-model/*",
+                    "arn:aws:bedrock:*::foundation-model/*",
                     # Cross-region inference profiles (global.*, apac.*, etc.)
                     f"arn:aws:bedrock:{target_region}:{self.account}:inference-profile/*",
                 ],

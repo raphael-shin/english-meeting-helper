@@ -18,10 +18,8 @@ from app.domain.models.events import (
     SubtitleSegmentEvent,
     SuggestionsUpdateEvent,
     SummaryUpdateEvent,
-    TranscriptCorrectedEvent,
     TranscriptFinalEvent,
     TranscriptPartialEvent,
-    TranslationCorrectedEvent,
     TranslationFinalEvent,
 )
 from app.domain.models.session import MeetingSession
@@ -31,7 +29,6 @@ from app.domain.models.subtitle import SubtitleSegment
 from app.services.stt import STTServiceProtocol, create_stt_service
 from app.services.suggestion import SuggestionService
 from app.services.summary import SummaryService
-from app.services.correction import CorrectionQueue
 from app.services.translation import TranslationServiceProtocol, create_translation_service
 from app.services.translation.aws import AWSTranslationService
 
@@ -76,12 +73,6 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
         websocket.app.state.summary_service = summary_service
     session = MeetingSession(session_id)
     transcribe_service = create_stt_service(settings)
-    correction_queue: CorrectionQueue | None = None
-    if settings.llm_correction_enabled:
-        correction_queue = CorrectionQueue(
-            bedrock_service,
-            batch_size=settings.llm_correction_batch_size,
-        )
     send_lock = asyncio.Lock()
     is_closing = False
     background_tasks: set[asyncio.Task] = set()
@@ -252,70 +243,6 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
                     translated_text=translated,
                 )
             )
-
-    async def translate_corrected_text(
-        corrected_text: str,
-        segment_id: int,
-    ) -> None:
-        if is_closing:
-            return
-        async with translation_semaphore:
-            started = time.perf_counter()
-            try:
-                translated = await translation_service.translate_en_to_ko_history(
-                    corrected_text,
-                    None,
-                )
-            except Exception:
-                logger.exception("Corrected translation failed")
-                await send_event(
-                    ErrorEvent(code="BEDROCK_ERROR", message="Corrected translation failed")
-                )
-                return
-            log_event(
-                logger,
-                "translation.corrected",
-                session_id=session_id,
-                segment_id=segment_id,
-                text_len=len(corrected_text),
-                latency_ms=int((time.perf_counter() - started) * 1000),
-            )
-            await send_event(
-                TranslationCorrectedEvent(
-                    session_id=session_id,
-                    segment_id=segment_id,
-                    speaker="spk_1",
-                    source_text=corrected_text,
-                    translated_text=translated,
-                )
-            )
-
-    async def process_corrections() -> None:
-        if correction_queue is None:
-            return
-        while not is_closing:
-            try:
-                corrections = await correction_queue.process_batch()
-                for segment_id, original, corrected in corrections:
-                    await send_event(
-                        TranscriptCorrectedEvent(
-                            session_id=session_id,
-                            segment_id=segment_id,
-                            original_text=original,
-                            corrected_text=corrected,
-                        )
-                    )
-                    track_task(
-                        asyncio.create_task(
-                            translate_corrected_text(
-                                corrected_text=corrected,
-                                segment_id=segment_id,
-                            )
-                        )
-                    )
-            except Exception:
-                logger.exception("Correction processing failed")
-            await asyncio.sleep(settings.llm_correction_interval_seconds)
 
     async def generate_and_send_suggestions(
         transcripts: list[Any], prompt: str | None
@@ -494,11 +421,7 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
                     # Update display buffer
                     session.update_display_buffer(segment)
                     await send_display_update()
-                    
-                    # Enqueue for LLM correction
-                    if correction_queue is not None:
-                        await correction_queue.enqueue(segment)
-                    
+
                     # Log event
                     log_event(
                         logger,
@@ -570,8 +493,6 @@ async def meeting_ws(websocket: WebSocket, session_id: str) -> None:
         return
 
     results_task = asyncio.create_task(handle_transcribe_events(transcribe_service.get_results()))
-    if correction_queue is not None:
-        track_task(asyncio.create_task(process_corrections()))
 
     try:
         while True:

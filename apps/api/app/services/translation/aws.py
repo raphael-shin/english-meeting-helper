@@ -66,10 +66,6 @@ class AWSTranslationService:
         response = await self._invoke_model(self.settings.bedrock_quick_translate_model_id, prompt)
         return response.strip()
 
-    async def invoke_correction(self, prompt: str) -> str:
-        response = await self._invoke_model(self.settings.bedrock_correction_model_id, prompt)
-        return response.strip()
-
     async def _invoke_model(self, model_id: str, prompt: str) -> str:
         response = await asyncio.to_thread(
             self.client.converse,

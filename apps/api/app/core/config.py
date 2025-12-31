@@ -25,10 +25,6 @@ class Settings(BaseSettings):
         "global.anthropic.claude-haiku-4-5-20251001-v1:0",
         validation_alias="BEDROCK_TRANSLATION_HIGH_MODEL_ID",
     )
-    bedrock_correction_model_id: str = Field(
-        "apac.anthropic.claude-haiku-4-5-20251001-v1:0",
-        validation_alias="BEDROCK_CORRECTION_MODEL_ID",
-    )
     openai_api_key: str | None = Field(None, validation_alias="OPENAI_API_KEY")
     openai_stt_model: str = Field("gpt-4o-transcribe", validation_alias="OPENAI_STT_MODEL")
     openai_translation_model: str = Field("gpt-4o-mini", validation_alias="OPENAI_TRANSLATION_MODEL")
@@ -37,9 +33,6 @@ class Settings(BaseSettings):
     google_project_id: str | None = Field(None, validation_alias="GOOGLE_PROJECT_ID")
     google_credentials_path: str | None = Field(None, validation_alias="GOOGLE_APPLICATION_CREDENTIALS")
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"], validation_alias="CORS_ORIGINS")
-    llm_correction_enabled: bool = Field(False, validation_alias="LLM_CORRECTION_ENABLED")
-    llm_correction_batch_size: int = Field(5, validation_alias="LLM_CORRECTION_BATCH_SIZE")
-    llm_correction_interval_seconds: int = Field(5, validation_alias="LLM_CORRECTION_INTERVAL_SECONDS")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 

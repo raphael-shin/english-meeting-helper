@@ -1,12 +1,6 @@
 {
   "app": "python app.py",
   "context": {
-    "@aws-cdk/core:defaultRegion": "ap-northeast-2",
-    "bedrock": {
-      "translationFastModelId": "global.amazon.nova-lite-v1:0",
-      "translationHighModelId": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
-      "quickTranslateModelId": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
-      "correctionModelId": "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-    }
+    "@aws-cdk/core:defaultRegion": "ap-northeast-2"
   }
 }

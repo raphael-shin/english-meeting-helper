@@ -63,7 +63,6 @@ cd infra/cdk && cdk deploy
 - `BEDROCK_TRANSLATION_FAST_MODEL_ID` (default: apac.anthropic.claude-haiku-4-5-20251001-v1:0)
 - `BEDROCK_TRANSLATION_HIGH_MODEL_ID` (default: global.anthropic.claude-haiku-4-5-20251001-v1:0)
 - `BEDROCK_QUICK_TRANSLATE_MODEL_ID` (default: apac.anthropic.claude-haiku-4-5-20251001-v1:0)
-- `BEDROCK_CORRECTION_MODEL_ID` (default: apac.anthropic.claude-haiku-4-5-20251001-v1:0)
 
 **OpenAI Configuration:**
 - `OPENAI_API_KEY` (required for OPENAI mode)
